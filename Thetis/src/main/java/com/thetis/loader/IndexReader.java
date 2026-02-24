@@ -1,5 +1,7 @@
 package com.thetis.loader;
 
+import com.thetis.connector.DBDriver;
+import com.thetis.connector.Neo4jSemanticDriver;
 import com.thetis.store.EmbeddingsIndex;
 import com.thetis.store.EntityLinking;
 import com.thetis.store.EntityTable;
@@ -11,6 +13,7 @@ import com.thetis.system.Configuration;
 import com.thetis.system.Logger;
 
 import java.io.*;
+import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -31,9 +34,11 @@ public class IndexReader implements IndexIO
     private EmbeddingsIndex<Id> embeddingsIdx;
     private SetLSHIndex typesLSHIndex, predicatesLSHIndex;
     private VectorLSHIndex embeddingsLSHIndex;
+    private Neo4jSemanticDriver neo4j;
+    private DBDriver<List<Double>, String> embedddingsDB;
     private static final int INDEX_COUNT = 5;
 
-    public IndexReader(File indexDir, boolean isMultithreaded, boolean logProgress)
+    public IndexReader(File indexDir, boolean isMultithreaded, boolean logProgress, Neo4jSemanticDriver neo4j, DBDriver<List<Double>, String> embedddingsDB)
     {
         if (!indexDir.isDirectory())
         {
@@ -48,6 +53,8 @@ public class IndexReader implements IndexIO
         this.indexDir = indexDir;
         this.multithreaded = isMultithreaded;
         this.logProgress = logProgress;
+        this.neo4j = neo4j;
+        this.embedddingsDB = embedddingsDB;
     }
 
     /**
@@ -121,6 +128,9 @@ public class IndexReader implements IndexIO
         this.typesLSHIndex = (SetLSHIndex) readIndex(this.indexDir + "/" + Configuration.getTypesLSHIndexFile());
         this.predicatesLSHIndex = (SetLSHIndex) readIndex(this.indexDir + "/" + Configuration.getPredicatesLSHIndexFile());
         this.embeddingsLSHIndex = (VectorLSHIndex) readIndex(this.indexDir + "/" + Configuration.getEmbeddingsLSHFile());
+        this.typesLSHIndex.useNeo4j(this.neo4j);
+        this.predicatesLSHIndex.useNeo4j(this.neo4j);
+        this.embeddingsLSHIndex.useEmbeddingsDB(this.embedddingsDB);
     }
 
     private Object readIndex(String file)

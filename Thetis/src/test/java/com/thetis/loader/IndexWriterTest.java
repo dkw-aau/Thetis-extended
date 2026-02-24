@@ -1,9 +1,7 @@
 package com.thetis.loader;
 
 import com.thetis.TestUtils;
-import com.thetis.connector.DBDriverBatch;
-import com.thetis.connector.Factory;
-import com.thetis.connector.Neo4jEndpoint;
+import com.thetis.connector.*;
 import com.thetis.store.EntityLinking;
 import com.thetis.store.EntityTable;
 import com.thetis.store.EntityTableLink;
@@ -14,6 +12,7 @@ import com.thetis.system.Configuration;
 import org.junit.*;
 
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Iterator;
@@ -34,12 +33,14 @@ public class IndexWriterTest
         synchronized (TestUtils.lock)
         {
             Configuration.reloadConfiguration();
-            Neo4jEndpoint endpoint = new Neo4jEndpoint("config.properties");
-            DBDriverBatch<List<Double>, String> embeddingsDB = Factory.fromConfig(false);
+            Configuration.setPermutationVectors(10);
+            Configuration.setBandSize(5);
+            Neo4jSemanticDriver endpoint = new MockNeo4jEndpoint();
+            DBDriverBatch<List<Double>, String> embeddingsDB = new MockEmbeddingsDB(200);
             List<Path> paths = List.of(Path.of("table-0072-223.json"), Path.of("table-0314-885.json"),
                     Path.of("table-0782-820.json"), Path.of("table-1019-555.json"), Path.of("table-1260-258.json"));
             paths = paths.stream().map(t -> Path.of("testing/data/" + t.toString())).collect(Collectors.toList());
-            this.writer = new IndexWriter(paths, this.outDir, new WikiLinker(endpoint), endpoint, 1, embeddingsDB,
+            this.writer = new IndexWriter(paths, this.outDir, new MockLinker(), endpoint, 1, embeddingsDB,
                     "http://www.wikipedia.org/", "http://dbpedia.org/");
             this.writer.performIO();
         }
@@ -60,7 +61,7 @@ public class IndexWriterTest
         EntityLinking linker = this.writer.getEntityLinker();
         EntityTable entityTable = this.writer.getEntityTable();
         EntityTableLink entityTableLink = this.writer.getEntityTableLinker();
-        assertEquals(135, entityTable.size());
+        assertEquals(143, entityTable.size());
         assertEquals(entityTable.size(), entityTableLink.size());
 
         int count = 0;
@@ -71,7 +72,7 @@ public class IndexWriterTest
             iter.next();
         }
 
-        assertEquals(135, count);
+        assertEquals(143, count);
     }
 
     @Test
@@ -103,13 +104,8 @@ public class IndexWriterTest
         EntityLinking linker = this.writer.getEntityLinker();
         Entity ent1 = entityTable.find(linker.kgUriLookup("http://dbpedia.org/resource/Boston_Bruins")),
                 ent2 = entityTable.find(linker.kgUriLookup("http://dbpedia.org/resource/NEC_Cup"));
-        Set<String> ent1Types = Set.of("http://dbpedia.org/ontology/HockeyTeam", "http://dbpedia.org/ontology/Agent",
-                "http://dbpedia.org/ontology/Organisation", "http://dbpedia.org/ontology/SportsTeam",
-                "http://schema.org/Organization", "http://schema.org/SportsTeam", "http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Agent",
-                "http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#SocialPerson",
-                "http://www.wikidata.org/entity/Q12973014", "http://www.wikidata.org/entity/Q24229398",
-                "http://www.wikidata.org/entity/Q43229", "http://www.wikidata.org/entity/Q4498974"),
-                ent2Types = Set.of();
+        Set<String> ent1Types = Set.of("https://www.w3.org/2002/07/owl#Thing", "https://dbpedia.org/ontology/Person", "https://www.wikidata.org/wiki/Q5"),
+                ent2Types = ent1Types;
 
         // Checking URIs
         assertEquals("http://dbpedia.org/resource/Boston_Bruins", ent1.getUri());

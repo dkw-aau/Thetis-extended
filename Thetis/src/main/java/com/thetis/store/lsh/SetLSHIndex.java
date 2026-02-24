@@ -1,5 +1,6 @@
 package com.thetis.store.lsh;
 
+import com.thetis.connector.Neo4jSemanticDriver;
 import com.thetis.store.EntityLinking;
 import com.thetis.store.EntityTable;
 import com.thetis.connector.Neo4jEndpoint;
@@ -31,7 +32,7 @@ public class SetLSHIndex extends BucketIndex<Id, String> implements LSHIndex<Str
     }
 
     private EntitySet setType;
-    private File neo4jConfFile;
+    private transient Neo4jSemanticDriver neo4j;
     private int shingles, permutationVectors, bandSize;
     private List<List<Integer>> permutations;
     private List<PairNonComparable<Id, List<Integer>>> signature;
@@ -47,13 +48,13 @@ public class SetLSHIndex extends BucketIndex<Id, String> implements LSHIndex<Str
     private static final double UNIMPORTANT_TABLE_PERCENTAGE = 0.5;
 
     /**
-     * @param neo4jConfigFile Neo4J connector configuration file
+     * @param neo4j Neo4J connector
      * @param permutationVectors Number of permutation vectors used to create min-hash signature (this determines the signature dimension for each entity)
      * @param tables Set of tables containing  entities to be loaded
      * @param hash A hash function to be applied on min-hash signature to compute bucket index
      * @param bucketCount Number of LSH buckets (this determines runtime and accuracy!)
      */
-    public SetLSHIndex(File neo4jConfigFile, EntitySet set, int permutationVectors, int bandSize, int shingleSize,
+    public SetLSHIndex(Neo4jSemanticDriver neo4j, EntitySet set, int permutationVectors, int bandSize, int shingleSize,
                        Set<PairNonComparable<String, Table<String>>> tables, HashFunction hash, int bucketGroups,
                        int bucketCount, int threads, Random randomGenerator, EntityLinking linker,
                        EntityTable entityTable, boolean aggregateColumns)
@@ -71,7 +72,7 @@ public class SetLSHIndex extends BucketIndex<Id, String> implements LSHIndex<Str
         }
 
         this.setType = set;
-        this.neo4jConfFile = neo4jConfigFile;
+        this.neo4j = neo4j;
         this.shingles = shingleSize;
         this.permutationVectors = permutationVectors;
         this.signature = new ArrayList<>();
@@ -99,6 +100,11 @@ public class SetLSHIndex extends BucketIndex<Id, String> implements LSHIndex<Str
     public void useEntityLinker(EntityLinking linker)
     {
         this.linker = linker;
+    }
+
+    public void useNeo4j(Neo4jSemanticDriver driver)
+    {
+        this.neo4j = driver;
     }
 
     private void loadElements(EntityTable entityTable, Set<Table<String>> linkedTables, EntityLinking linker)
@@ -134,7 +140,6 @@ public class SetLSHIndex extends BucketIndex<Id, String> implements LSHIndex<Str
 
         ExecutorService executor = Executors.newFixedThreadPool(this.threads);
         List<Future<?>> futures = new ArrayList<>(tables.size());
-        Neo4jEndpoint neo4j = new Neo4jEndpoint(this.neo4jConfFile);
         int elementsDimension = this.universeElements.size();
 
         for (int i = 1; i < this.shingles; i++)
@@ -146,7 +151,7 @@ public class SetLSHIndex extends BucketIndex<Id, String> implements LSHIndex<Str
 
         for (PairNonComparable<String, Table<String>> table : tables)
         {
-            futures.add(executor.submit(() -> loadTable(table, neo4j)));
+            futures.add(executor.submit(() -> loadTable(table)));
         }
 
         try
@@ -161,11 +166,9 @@ public class SetLSHIndex extends BucketIndex<Id, String> implements LSHIndex<Str
         {
             throw new RuntimeException("Error in multi-threaded loading of LSH index: " + e.getMessage());
         }
-
-        neo4j.close();
     }
 
-    private void loadTable(PairNonComparable<String, Table<String>> table, Neo4jEndpoint neo4j)
+    private void loadTable(PairNonComparable<String, Table<String>> table)
     {
         String tableName = table.getFirst();
         List<PairNonComparable<Id, Set<Integer>>> matrix = new ArrayList<>();
@@ -174,7 +177,7 @@ public class SetLSHIndex extends BucketIndex<Id, String> implements LSHIndex<Str
 
         if (this.aggregateColumns)
         {
-            loadByColumns(tableName, t, neo4j);
+            loadByColumns(tableName, t);
             return;
         }
 
@@ -186,7 +189,7 @@ public class SetLSHIndex extends BucketIndex<Id, String> implements LSHIndex<Str
             {
                 String entity = t.getRow(row).get(column);
                 Id entityId = this.linker.kgUriLookup(entity);
-                Set<Integer> entityBitVector = bitVector(entity, neo4j);
+                Set<Integer> entityBitVector = bitVector(entity, this.neo4j);
 
                 if (!entityBitVector.isEmpty())
                 {
@@ -203,12 +206,12 @@ public class SetLSHIndex extends BucketIndex<Id, String> implements LSHIndex<Str
         insertIntoBuckets(matrix, tableName);
     }
 
-    private void loadByColumns(String tableName, Table<String> table, Neo4jEndpoint neo4j)
+    private void loadByColumns(String tableName, Table<String> table)
     {
         List<PairNonComparable<Id, Set<Integer>>> matrix = new ArrayList<>();
         Aggregator<String> aggregator = new ColumnAggregator<>(table);
         List<Set<String>> aggregatedColumns =
-                aggregator.aggregate(cell -> elements(cell, neo4j),
+                aggregator.aggregate(cell -> elements(cell, this.neo4j),
                         coll -> {
                             Set<String> elements = new HashSet<>();
                             coll.forEach(elements::addAll);
@@ -257,7 +260,7 @@ public class SetLSHIndex extends BucketIndex<Id, String> implements LSHIndex<Str
         }
     }
 
-    private Set<Integer> bitVector(String entity, Neo4jEndpoint neo4j)
+    private Set<Integer> bitVector(String entity, Neo4jSemanticDriver neo4j)
     {
         Set<String> elements = elements(entity, neo4j);
         return bitVector(elements);
@@ -288,7 +291,7 @@ public class SetLSHIndex extends BucketIndex<Id, String> implements LSHIndex<Str
         return indices;
     }
 
-    private synchronized Set<String> elements(String entity, Neo4jEndpoint neo4j)
+    private synchronized Set<String> elements(String entity, Neo4jSemanticDriver neo4j)
     {
         return new HashSet<>(this.setType == EntitySet.TYPES ? neo4j.searchTypes(entity) : neo4j.searchPredicates(entity));
     }
@@ -379,16 +382,8 @@ public class SetLSHIndex extends BucketIndex<Id, String> implements LSHIndex<Str
             throw new RuntimeException("Entity does not exist in EntityLinker object");
         }
 
-        try (Neo4jEndpoint neo4j = new Neo4jEndpoint(this.neo4jConfFile))
-        {
-            Set<Integer> entityBitVector = bitVector(entity, neo4j);
-            return createOrGetSignature(entityId, entityBitVector);
-        }
-
-        catch (IOException e)
-        {
-            throw new RuntimeException("Failed initializing Neo4J connector");
-        }
+        Set<Integer> entityBitVector = bitVector(entity, this.neo4j);
+        return createOrGetSignature(entityId, entityBitVector);
     }
 
     private int createOrGetSignature(Id entityId, Set<Integer> bitVector)
@@ -502,17 +497,9 @@ public class SetLSHIndex extends BucketIndex<Id, String> implements LSHIndex<Str
     {
         Set<String> mergedTypes = new HashSet<>();
 
-        try (Neo4jEndpoint neo4j = new Neo4jEndpoint(this.neo4jConfFile))
+        for (String key : keys)
         {
-            for (String key : keys)
-            {
-                mergedTypes.addAll(neo4j.searchTypes(key));
-            }
-        }
-
-        catch (IOException e)
-        {
-            throw new RuntimeException("Failed initializing Neo4J connector");
+            mergedTypes.addAll(this.neo4j.searchTypes(key));
         }
 
         Set<Integer> aggregatedBitVector = bitVector(mergedTypes);

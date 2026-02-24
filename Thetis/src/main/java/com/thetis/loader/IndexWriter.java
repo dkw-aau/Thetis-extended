@@ -4,6 +4,7 @@ import com.google.common.hash.BloomFilter;
 import com.google.common.hash.Funnels;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.thetis.connector.Neo4jSemanticDriver;
 import com.thetis.store.*;
 import com.thetis.store.lsh.VectorLSHIndex;
 import com.thetis.commands.parser.TableParser;
@@ -50,7 +51,7 @@ public class IndexWriter implements IndexIO
     private long elapsed = -1;
     private Map<Integer, Integer> cellToNumLinksFrequency = Collections.synchronizedMap(new HashMap<>());
     private Map<Integer, Integer> linkToNumEntitiesFrequency = Collections.synchronizedMap(new HashMap<>());
-    private Neo4jEndpoint neo4j;
+    private Neo4jSemanticDriver neo4j;
     private Linker entityLinker;
     private SynchronizedLinker<String, String> linker;
     private SynchronizedIndex<Id, Entity> entityTable;
@@ -90,7 +91,7 @@ public class IndexWriter implements IndexIO
         return sum % num;
     };
 
-    public IndexWriter(List<Path> files, File outputDir, Linker entityLinker, Neo4jEndpoint neo4j, int threads,
+    public IndexWriter(List<Path> files, File outputDir, Linker entityLinker, Neo4jSemanticDriver neo4j, int threads,
                        DBDriverBatch<List<Double>, String> embeddingStore, String wikiPrefix, String uriPrefix, String ... disallowedEntityTypes)
     {
         if (!outputDir.exists())
@@ -197,18 +198,19 @@ public class IndexWriter implements IndexIO
         }
 
         Logger.log(Logger.Level.INFO, "Loaded LSH index 0/3");
-        this.typesLSH = new SetLSHIndex(this.neo4j.getConfigFile(), SetLSHIndex.EntitySet.TYPES, permutations, bandSize, 2,
+        this.typesLSH = new SetLSHIndex(this.neo4j, SetLSHIndex.EntitySet.TYPES, permutations, bandSize, 2,
                 this.tableEntities, HASH_FUNCTION_NUMERIC, bucketGroups, bucketsPerGroup, this.threads, new Random(0),
                 (EntityLinking) this.linker.getLinker(), (EntityTable) this.entityTable.getIndex(), false);
 
         Logger.log(Logger.Level.INFO, "Loaded LSH index 1/3");
-        this.predicatesLSH = new SetLSHIndex(this.neo4j.getConfigFile(), SetLSHIndex.EntitySet.PREDICATES, permutations, bandSize, 1,
+        this.predicatesLSH = new SetLSHIndex(this.neo4j, SetLSHIndex.EntitySet.PREDICATES, permutations, bandSize, 1,
                 this.tableEntities, HASH_FUNCTION_NUMERIC, bucketGroups, bucketsPerGroup, this.threads, new Random(0),
                 (EntityLinking) this.linker.getLinker(), (EntityTable) this.entityTable.getIndex(), false);
 
         Logger.log(Logger.Level.INFO, "Loaded LSH index 2/3");
         this.embeddingsLSH = new VectorLSHIndex(bucketGroups, bucketsPerGroup, permutations, bandSize,
-                this.tableEntities, this.threads, (EntityLinking) this.linker.getLinker(), HASH_FUNCTION_BOOLEAN, new Random(0), false);
+                this.tableEntities, this.threads, (EntityLinking) this.linker.getLinker(), HASH_FUNCTION_BOOLEAN,
+                new Random(0), this.embeddingsDB, false);
         Logger.log(Logger.Level.INFO, "Loaded LSH index 3/3");
     }
 

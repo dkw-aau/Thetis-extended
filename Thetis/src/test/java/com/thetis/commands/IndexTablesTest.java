@@ -48,7 +48,7 @@ public class IndexTablesTest extends TestCase {
         //System.out.println("String serialized as:\n"+jsonString);
 
         encoder = new Gson();
-        try (FileWriter writer = new FileWriter("/tmp/test.json")) {
+        try (FileWriter writer = new FileWriter("test.json")) {
             encoder.toJson(table, writer);
         } catch (IOException e) {
             e.printStackTrace();
@@ -59,7 +59,7 @@ public class IndexTablesTest extends TestCase {
         JsonTable decoded = null;
         TypeAdapter<JsonTable> strictGsonObjectAdapter =
                 new Gson().getAdapter(JsonTable.class);
-        try (JsonReader reader = new JsonReader(new FileReader(new File("/tmp/test.json")))) {
+        try (JsonReader reader = new JsonReader(new FileReader("test.json"))) {
             decoded = strictGsonObjectAdapter.read(reader);
         } catch (FileNotFoundException e) {
             e.printStackTrace();
@@ -68,16 +68,12 @@ public class IndexTablesTest extends TestCase {
 
         }
 
-
-
         assertEquals(table._id , decoded._id);
         assertEquals(decoded.headers.size(), table.numCols);
         assertEquals(table.headers, decoded.headers);
         assertEquals(decoded.rows.size(), table.numDataRows);
         assertEquals(table.rows, decoded.rows);
 
-        new File("/tmp/test.json").delete();
-
-
+        new File("test.json").delete();
     }
 }

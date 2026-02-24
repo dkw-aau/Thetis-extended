@@ -25,7 +25,7 @@ public class SynchronizedTableTest extends TableTest
     }
 
     @Test
-    public void testSynchronization()
+    public void testSynchronization() throws InterruptedException
     {
         Table<Integer> table = setup();
         List<Thread> threads = new ArrayList<>(20);
@@ -41,6 +41,8 @@ public class SynchronizedTableTest extends TableTest
             t.start();
             threads.add(t);
         }
+
+        Thread.sleep(100);
 
         for (int i = 0; i < 10; i++)
         {

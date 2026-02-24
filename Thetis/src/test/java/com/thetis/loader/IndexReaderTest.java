@@ -1,9 +1,7 @@
 package com.thetis.loader;
 
 import com.thetis.TestUtils;
-import com.thetis.connector.DBDriverBatch;
-import com.thetis.connector.Factory;
-import com.thetis.connector.Neo4jEndpoint;
+import com.thetis.connector.*;
 import com.thetis.store.EntityLinking;
 import com.thetis.store.EntityTable;
 import com.thetis.store.EntityTableLink;
@@ -37,15 +35,17 @@ public class IndexReaderTest
         synchronized (TestUtils.lock)
         {
             Configuration.reloadConfiguration();
-            DBDriverBatch<List<Double>, String> embeddingsDB = Factory.fromConfig(false);
-            Neo4jEndpoint endpoint = new Neo4jEndpoint("config.properties");
+            Configuration.setPermutationVectors(10);
+            Configuration.setBandSize(5);
+            DBDriverBatch<List<Double>, String> embeddingsDB = new MockEmbeddingsDB(200);
+            Neo4jSemanticDriver endpoint = new MockNeo4jEndpoint();
             List<Path> paths = List.of(Path.of("table-0072-223.json"), Path.of("table-0314-885.json"),
                     Path.of("table-0782-820.json"), Path.of("table-1019-555.json"), Path.of("table-1260-258.json"));
             paths = paths.stream().map(t -> Path.of("testing/data/" + t.toString())).collect(Collectors.toList());
-            IndexWriter writer = new IndexWriter(paths, this.outDir, new WikiLinker(endpoint), endpoint, 1,
+            IndexWriter writer = new IndexWriter(paths, this.outDir, new MockLinker(), endpoint, 1,
                     embeddingsDB, "http://www.wikipedia.org/", "http://dbpedia.org/");
             writer.performIO();
-            this.reader = new IndexReader(this.outDir, false, true);
+            this.reader = new IndexReader(this.outDir, false, true, endpoint, embeddingsDB);
             this.reader.performIO();
         }
     }
@@ -101,13 +101,8 @@ public class IndexReaderTest
         EntityLinking linker = this.reader.getLinker();
         Entity ent1 = entityTable.find(linker.kgUriLookup("http://dbpedia.org/resource/Boston_Bruins")),
                 ent2 = entityTable.find(linker.kgUriLookup("http://dbpedia.org/resource/NEC_Cup"));
-        Set<String> ent1Types = Set.of("http://dbpedia.org/ontology/HockeyTeam", "http://dbpedia.org/ontology/Agent",
-                "http://dbpedia.org/ontology/Organisation", "http://dbpedia.org/ontology/SportsTeam",
-                "http://schema.org/Organization", "http://schema.org/SportsTeam", "http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Agent",
-                "http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#SocialPerson",
-                "http://www.wikidata.org/entity/Q12973014", "http://www.wikidata.org/entity/Q24229398",
-                "http://www.wikidata.org/entity/Q43229", "http://www.wikidata.org/entity/Q4498974"),
-                ent2Types = Set.of();
+        Set<String> ent1Types = Set.of("https://www.w3.org/2002/07/owl#Thing", "https://dbpedia.org/ontology/Person", "https://www.wikidata.org/wiki/Q5"),
+                ent2Types = ent1Types;
 
         // Checking URIs
         assertEquals("http://dbpedia.org/resource/Boston_Bruins", ent1.getUri());

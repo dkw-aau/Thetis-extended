@@ -257,7 +257,11 @@ public class SearchTables extends Command {
         {
             // Perform De-Serialization of the indexes
             long startTime = System.nanoTime();
-            IndexReader indexReader = new IndexReader(this.indexDir, true, true);
+            DBDriverBatch<List<Double>, String> embeddingStore = Factory.fromConfig(false);
+            Neo4jEndpoint connector = new Neo4jEndpoint(this.configFile);
+            connector.testConnection();
+
+            IndexReader indexReader = new IndexReader(this.indexDir, true, true, connector, embeddingStore);
             indexReader.performIO();
 
             long elapsedTime = System.nanoTime() - startTime;
@@ -275,9 +279,6 @@ public class SearchTables extends Command {
             predicatesLSH.useEntityLinker(linker);
             embeddingsLSH.useEntityLinker(linker);
             Prefilter prefilter = null;
-            DBDriverBatch<List<Double>, String> embeddingStore = Factory.fromConfig(false);
-            Neo4jEndpoint connector = new Neo4jEndpoint(this.configFile);
-            connector.testConnection();
 
             if (this.prefilterTechnique != null)
             {

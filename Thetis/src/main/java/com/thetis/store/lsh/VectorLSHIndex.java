@@ -34,6 +34,7 @@ public class VectorLSHIndex extends BucketIndex<Id, String> implements LSHIndex<
     private transient EntityLinking linker = null;
     private HashFunction hash;
     private RandomGenerator randomGen;
+    private transient DBDriver<List<Double>, String> embeddingsDB;
     private transient Cache<Id, List<Integer>> cache;
 
     /**
@@ -44,7 +45,7 @@ public class VectorLSHIndex extends BucketIndex<Id, String> implements LSHIndex<
      */
     public VectorLSHIndex(int bucketGroups, int bucketCount, int projections, int bandSize,
                           Set<PairNonComparable<String, Table<String>>> tables, int threads, EntityLinking linker,
-                          HashFunction hash, RandomGenerator randomGenerator, boolean aggregateColumns)
+                          HashFunction hash, RandomGenerator randomGenerator, DBDriver<List<Double>, String> embeddingsDB, boolean aggregateColumns)
     {
         super(bucketGroups, bucketCount);
         this.bandSize = bandSize;
@@ -52,6 +53,7 @@ public class VectorLSHIndex extends BucketIndex<Id, String> implements LSHIndex<
         this.linker = linker;
         this.hash = hash;
         this.randomGen = randomGenerator;
+        this.embeddingsDB = embeddingsDB;
         this.aggregateColumns = aggregateColumns;
         this.cache = CacheBuilder.newBuilder().maximumSize(500).build();
         load(tables, projections);
@@ -62,9 +64,13 @@ public class VectorLSHIndex extends BucketIndex<Id, String> implements LSHIndex<
         this.linker = linker;
     }
 
+    public void useEmbeddingsDB(DBDriver<List<Double>, String> embeddingsDB)
+    {
+        this.embeddingsDB = embeddingsDB;
+    }
+
     private void load(Set<PairNonComparable<String, Table<String>>> tables, int projections)
     {
-        DBDriver<List<Double>, String> embeddingsDB = Factory.fromConfig(false);
         ExecutorService executor = Executors.newFixedThreadPool(this.threads);
         List<Future<?>> futures = new ArrayList<>(tables.size());
 
@@ -73,7 +79,7 @@ public class VectorLSHIndex extends BucketIndex<Id, String> implements LSHIndex<
             throw new RuntimeException("No tables to load LSH index of embeddings");
         }
 
-        int dimension = embeddingsDimension(tables.iterator().next().getSecond(), embeddingsDB);
+        int dimension = embeddingsDimension(tables.iterator().next().getSecond(), this.embeddingsDB);
 
         if (dimension == -1)
         {
@@ -84,7 +90,7 @@ public class VectorLSHIndex extends BucketIndex<Id, String> implements LSHIndex<
 
         for (PairNonComparable<String, Table<String>> table : tables)
         {
-            futures.add(executor.submit(() -> loadTable(table, embeddingsDB)));
+            futures.add(executor.submit(() -> loadTable(table, this.embeddingsDB)));
         }
 
         try
@@ -99,8 +105,6 @@ public class VectorLSHIndex extends BucketIndex<Id, String> implements LSHIndex<
         {
             throw new RuntimeException("Error in multi-threaded loading of LSH index: " + e.getMessage());
         }
-
-        embeddingsDB.close();
     }
 
     private void loadTable(PairNonComparable<String, Table<String>> table, DBDriver<List<Double>, String> embeddingsDB)
@@ -259,9 +263,8 @@ public class VectorLSHIndex extends BucketIndex<Id, String> implements LSHIndex<
             throw new RuntimeException("Entity does not exist in specified EntityLinker object");
         }
 
-        DBDriver<List<Double>, String> embeddingsDB = Factory.fromConfig(false);
-        List<Double> embedding = embeddingsDB.select(entity);
-        embeddingsDB.close();
+        List<Double> embedding = this.embeddingsDB.select(entity);
+        this.embeddingsDB.close();
 
         if (embedding == null)
         {
@@ -284,9 +287,8 @@ public class VectorLSHIndex extends BucketIndex<Id, String> implements LSHIndex<
     @Override
     public Set<String> search(String entity, int vote)
     {
-        DBDriver<List<Double>, String> embeddingsDB = Factory.fromConfig(false);
-        List<Double> embedding = embeddingsDB.select(entity);
-        embeddingsDB.close();
+        List<Double> embedding = this.embeddingsDB.select(entity);
+        this.embeddingsDB.close();
 
         if (embedding == null)
         {
@@ -307,12 +309,11 @@ public class VectorLSHIndex extends BucketIndex<Id, String> implements LSHIndex<
     @Override
     public Set<String> agggregatedSearch(int vote, String ... keys)
     {
-        DBDriver<List<Double>, String> embeddingsDB = Factory.fromConfig(false);
         List<List<Double>> keyEmbeddings = new ArrayList<>();
 
         for (String key : keys)
         {
-            List<Double> embedding = embeddingsDB.select(key);
+            List<Double> embedding = this.embeddingsDB.select(key);
 
             if (embedding != null)
             {
@@ -323,7 +324,6 @@ public class VectorLSHIndex extends BucketIndex<Id, String> implements LSHIndex<
         List<Double> averageEmbedding = Utils.averageVector(keyEmbeddings);
         List<Integer> bitVector = bitVector(averageEmbedding);
         List<Integer> bandKeys = createKeys(this.projections.size(), this.bandSize, bitVector, groupSize(), this.hash);
-        embeddingsDB.close();
         return super.search(bandKeys, vote);
     }
 }

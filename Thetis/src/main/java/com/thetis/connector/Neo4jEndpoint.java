@@ -13,7 +13,7 @@ import java.util.logging.Level;
 /**
  * Connects and query the KG in Neo4j
  */
-public class Neo4jEndpoint implements AutoCloseable {
+public class Neo4jEndpoint implements AutoCloseable, Neo4jSemanticDriver {
     private final Driver driver;
     private final String dbUri;
     private final String dbUser;
@@ -85,6 +85,7 @@ public class Neo4jEndpoint implements AutoCloseable {
      * @param predicateLabel Substring matching requirement
      * @return Predicate that satisfies substring requirement
      */
+    @Override
     public String getPredicate(String predicateLabel) {
         try (Session session = driver.session()) {
             return session.readTransaction(tx -> {
@@ -108,6 +109,7 @@ public class Neo4jEndpoint implements AutoCloseable {
      * @param links a list of wikipedia links [https://en.wikipedia.org/wiki/Yellow_Yeiyah, ...]
      * @return a list of mapped dbpedia links [http://dbpedia.org/resource/Yellow_Yeiyah, ...]
      */
+    @Override
     public List<String> searchLinks(Iterable<String> links) {
 
 
@@ -135,6 +137,7 @@ public class Neo4jEndpoint implements AutoCloseable {
      * @param link a specific wikipedia link
      * @return a list of possible entity matches
      */
+    @Override
     public List<String> searchLink(String link) {
 
         Map<String, Object> params = new HashMap<>();
@@ -162,6 +165,7 @@ public class Neo4jEndpoint implements AutoCloseable {
      * @param entity link a specific entity (i.e. a dbpedia link)
      * @return the list of rdf__type uris corresonding to the 
      */
+    @Override
     public List<String> searchTypes(String entity) {
         Map<String, Object> params = new HashMap<>();
         params.put("entity", entity);
@@ -188,6 +192,7 @@ public class Neo4jEndpoint implements AutoCloseable {
      * Returns all entities and their labels (labels can be null)
      * @return Result of all entities and their labels. Entities are return as 'uri' and labels as 'label'.
      */
+    @Override
     public List<Record> entityLabels() {
         try (Session session = this.driver.session()) {
             return session.readTransaction(tx -> {
@@ -198,6 +203,7 @@ public class Neo4jEndpoint implements AutoCloseable {
         }
     }
 
+    @Override
     public List<String> searchPredicates(String entity) {
         Map<String, Object> params = new HashMap<>();
         params.put("entity", entity);
@@ -218,6 +224,7 @@ public class Neo4jEndpoint implements AutoCloseable {
         }
     }
 
+    @Override
     public List<Pair<String, String>> searchLinkMentions(List<String> links) {
 
         Map<String, Object> params = new HashMap<>();
@@ -287,6 +294,7 @@ public class Neo4jEndpoint implements AutoCloseable {
     /**
      * Return the number of edges in the graph
      */
+    @Override
     public Long getNumEdges() {
         try (Session session = driver.session()) {
             Long numEdges = session.readTransaction(tx -> {
@@ -300,6 +308,7 @@ public class Neo4jEndpoint implements AutoCloseable {
     /**
      * Return the number of nodes in the graph
      */
+    @Override
     public Long getNumNodes() {
         try (Session session = driver.session()) {
             Long numNodes = session.readTransaction(tx -> {
@@ -313,6 +322,7 @@ public class Neo4jEndpoint implements AutoCloseable {
     /**
      * Return the number of neighbors for a given input node
      */
+    @Override
     public Long getNumNeighbors(String node) {
         Map<String, Object> params = new HashMap<>();
         params.put("node", node);

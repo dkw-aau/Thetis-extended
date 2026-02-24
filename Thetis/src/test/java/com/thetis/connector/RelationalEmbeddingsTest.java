@@ -1,6 +1,5 @@
 package com.thetis.connector;
 
-import com.thetis.connector.SQLite;
 import com.thetis.connector.embeddings.RelationalEmbeddings;
 import org.junit.After;
 import org.junit.Before;
