@@ -28,6 +28,7 @@ import com.thetis.store.EntityTable;
 import com.thetis.store.EntityTableLink;
 import com.thetis.store.lsh.SetLSHIndex;
 import com.thetis.store.lsh.VectorLSHIndex;
+import com.thetis.store.lucene.LuceneIndex;
 import com.thetis.structures.graph.Entity;
 import com.thetis.structures.graph.Type;
 import com.thetis.system.Logger;
@@ -54,7 +55,7 @@ public class SearchTables extends Command {
     CommandLine.Model.CommandSpec spec; // injected by picocli
 
     private enum SearchMode {
-        EXACT("exact"), ANALOGOUS("analogous"), PPR("ppr");
+        EXACT("exact"), ANALOGOUS("analogous"), PPR("ppr"), LUCENE("lucene");
 
         private final String mode;
         SearchMode(String mode){
@@ -106,7 +107,7 @@ public class SearchTables extends Command {
 
     private enum PrefilterTechnique {LSH_TYPES, LSH_PREDICATES, LSH_EMBEDDINGS, PPR, BM25}
 
-    @CommandLine.Option(names = { "-sm", "--search-mode" }, description = "Must be one of {exact, analogous}", required = true)
+    @CommandLine.Option(names = { "-sm", "--search-mode" }, description = "Must be one of {exact, analogous, lucene}", required = true)
     private SearchMode searchMode = null;
 
     @CommandLine.Option(names = { "-scpqe", "--singleColumnPerQueryEntity"}, description = "If specified, each query tuple will be evaluated against only one entity")
@@ -274,6 +275,7 @@ public class SearchTables extends Command {
             SetLSHIndex typesLSH = indexReader.getTypesLSHIndex();
             SetLSHIndex predicatesLSH = indexReader.getPredicatesLSHIndex();
             VectorLSHIndex embeddingsLSH = indexReader.getEmbeddingsLSHIndex();
+            LuceneIndex lucene = indexReader.getLuceneIndex();
             BM25 bm25 = new BM25(linker, entityTable, entityTableLink, embeddingsIdx);
             typesLSH.useEntityLinker(linker);
             predicatesLSH.useEntityLinker(linker);
@@ -329,6 +331,10 @@ public class SearchTables extends Command {
 
                     case PPR:
                         ppr(queryTable, queryName, linker, entityTable, entityTableLink, embeddingsIdx);
+                        break;
+
+                    case LUCENE:
+                        luceneSearch(queryTable, queryName, lucene, entityTableLink.getDirectory());
                         break;
                 }
             }
@@ -566,6 +572,24 @@ public class SearchTables extends Command {
         }
 
         return 1;
+    }
+
+    public void luceneSearch(Table<String> query, String queryName, LuceneIndex index, String tableDir)
+    {
+        LuceneSearch search = new LuceneSearch(index, this.topK);
+        Iterator<Pair<String, Double>> results = search.search(query).getResults();
+        List<Pair<String, Double>> scores = new ArrayList<>();
+        Logger.logNewLine(Logger.Level.RESULT, "\nTop-" + this.topK + " tables are:");
+
+        while (results.hasNext())
+        {
+            Pair<String, Double> result = results.next();
+            scores.add(result);
+            Logger.logNewLine(Logger.Level.RESULT, "Filename = " + result.getFirst() + ", score = " + result.getSecond());
+        }
+
+        saveFilenameScores(this.outputDir, tableDir, queryName, scores, new HashMap<>(), Set.of(), search.elapsedNanoSeconds(),
+                -1, -1, 1, -1, 0.0);
     }
 
     /**

@@ -33,8 +33,7 @@ public class TableParser
 
         catch (IOException e)
         {
-            e.printStackTrace();
-            return null;
+            throw new RuntimeException(e);
         }
     }
 

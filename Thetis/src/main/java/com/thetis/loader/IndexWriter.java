@@ -9,9 +9,11 @@ import com.thetis.store.*;
 import com.thetis.store.lsh.VectorLSHIndex;
 import com.thetis.commands.parser.TableParser;
 import com.thetis.connector.DBDriverBatch;
-import com.thetis.connector.Neo4jEndpoint;
 import com.thetis.store.lsh.HashFunction;
 import com.thetis.store.lsh.SetLSHIndex;
+import com.thetis.store.lucene.LuceneBuilder;
+import com.thetis.store.lucene.LuceneDocument;
+import com.thetis.store.lucene.LuceneIndex;
 import com.thetis.structures.Pair;
 import com.thetis.structures.PairNonComparable;
 import com.thetis.structures.graph.Entity;
@@ -59,6 +61,7 @@ public class IndexWriter implements IndexIO
     private SynchronizedIndex<Id, List<Double>> embeddingsIdx;
     private SetLSHIndex typesLSH, predicatesLSH;
     private VectorLSHIndex embeddingsLSH;
+    private LuceneBuilder lucenceBuilder;
     private DBDriverBatch<List<Double>, String> embeddingsDB;
     private BloomFilter<String> filter = BloomFilter.create(
             Funnels.stringFunnel(Charset.defaultCharset()),
@@ -121,6 +124,16 @@ public class IndexWriter implements IndexIO
         this.embeddingsIdx = SynchronizedIndex.wrap(new EmbeddingsIndex<>());
         this.entityTableLink = SynchronizedIndex.wrap(new EntityTableLink());
         ((EntityTableLink) this.entityTableLink.getIndex()).setDirectory(files.get(0).toFile().getParent() + "/");
+
+        try
+        {
+            this.lucenceBuilder = LuceneIndex.builder(outputDir.getAbsolutePath() + "/lucene/");
+        }
+
+        catch (IOException e)
+        {
+            throw new RuntimeException(e);
+        }
     }
 
     /**
@@ -138,6 +151,7 @@ public class IndexWriter implements IndexIO
         ExecutorService threadPool = Executors.newFixedThreadPool(this.threads);
         List<Future<Boolean>> tasks = new ArrayList<>(size);
         long startTime = System.nanoTime(), prev = 0;
+        threadPool.submit(this::loadLucene);
 
         for (int i = 0; i < size; i++)
         {
@@ -226,6 +240,7 @@ public class IndexWriter implements IndexIO
         String tableName = tablePath.getFileName().toString();
         Map<Pair<Integer, Integer>, List<String>> entityMatches = new HashMap<>();  // Maps a cell specified by RowNumber, ColumnNumber to the list of entities it matches to
         Table<String> parsedTable = new DynamicTable<>();   // The set of entities corresponding to this filename/table
+        StringBuilder documentBuilder = new StringBuilder();
         int row = 0;
 
         for (List<JsonTable.TableCell> tableRow : table.rows)
@@ -235,6 +250,11 @@ public class IndexWriter implements IndexIO
 
             for (JsonTable.TableCell cell : tableRow)
             {
+                if (!cell.text.isEmpty())
+                {
+                    documentBuilder.append(cell.text).append(" ");
+                }
+
                 if (!cell.links.isEmpty())
                 {
                     this.cellsWithLinks.incrementAndGet();
@@ -323,6 +343,40 @@ public class IndexWriter implements IndexIO
         }
 
         return true;
+    }
+
+    private void loadLucene()
+    {
+        for (Path path : this.files)
+        {
+            JsonTable table = TableParser.parse(path);
+            String tableName = path.getFileName().toString();
+            StringBuilder documentBuilder = new StringBuilder();
+
+            if (table == null ||  table._id == null || table.rows == null)
+            {
+                continue;
+            }
+
+            for (List<JsonTable.TableCell> tableRow : table.rows)
+            {
+                for (JsonTable.TableCell cell : tableRow)
+                {
+                    if (!cell.text.isEmpty())
+                    {
+                        documentBuilder.append(cell.text).append(" ");
+                    }
+                }
+            }
+
+            try
+            {
+                LuceneDocument<String> luceneDocument = new LuceneDocument<>(documentBuilder.toString().trim(), tableName, (doc) -> doc);
+                this.lucenceBuilder.addDocument(luceneDocument);
+            }
+
+            catch (IOException ignored) {}
+        }
     }
 
     private void saveStats(JsonTable jTable, String tableFileName, Table<String> table, Map<Pair<Integer, Integer>, List<String>> entityMatches)
@@ -546,6 +600,7 @@ public class IndexWriter implements IndexIO
         outputStream.close();
 
         genNeo4jTableMappings();
+        this.lucenceBuilder.build();
     }
 
     private void genNeo4jTableMappings() throws IOException
