@@ -170,7 +170,7 @@ public class IndexTables extends Command {
         Configuration.setBandSize(val);
     }
 
-    @CommandLine.Option(names = {"-link", "--entity-linker"}, description = "Type of entity linking", required = true, defaultValue = "wikilinkg")
+    @CommandLine.Option(names = {"-link", "--entity-linker"}, description = "Type of entity linking", required = true, defaultValue = "wikilink")
     private Linking linking;
 
     private File kgDir = null;

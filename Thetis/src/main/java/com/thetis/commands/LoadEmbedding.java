@@ -98,6 +98,8 @@ public class LoadEmbedding extends Command
             }
 
             db.close();
+            Logger.logNewLine(Logger.Level.INFO, "Done - loaded " + loaded + " mb of vector data");
+
             return 0;
         }
 

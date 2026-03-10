@@ -120,7 +120,7 @@ public class SearchTables extends Command {
     private boolean hungarianAlgorithmSameAlignmentAcrossTuples;
 
     @CommandLine.Option(names = { "-as", "--adjustedSimilarity"}, description = "If specified, the similarity score between two entities can only be 1.0 if the two entities compared are identical. " +
-            "If two different entities share the same types then assign an adjusted score of < 1.0> ")
+            "If two different entities share the same types then assign an adjusted score of <1.0> ")
     private boolean adjustedSimilarity;
 
     @CommandLine.Option(names = { "-wjs", "--weightedJaccardSimilarity"}, description = "If specified, the a weighted Jaccard similarity between two entities is performed. " +
@@ -147,9 +147,6 @@ public class SearchTables extends Command {
 
     @CommandLine.Option(names = { "-topK", "--topK"}, description = "The top-k values to be returned when running PPR", defaultValue="100")
     private Integer topK;
-
-    @CommandLine.Option(names = {"-ep", "--embeddingsPath"}, description = "Path to embeddings database for file. Whichever is specified by the `preTrainedEmbeddingsMode` argument")
-    private String embeddingsPath = null;
 
     private File indexDir = null;
     @CommandLine.Option(names = { "-i", "--index-dir" }, paramLabel = "INDEX_DIR", description = "Directory of loaded indexes", defaultValue = "../data/index/wikitables/")
