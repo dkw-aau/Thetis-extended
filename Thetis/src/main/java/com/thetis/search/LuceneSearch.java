@@ -32,7 +32,9 @@ public class LuceneSearch extends AbstractSearch
 
                 for (int column = 0; column < columns; column++)
                 {
-                    builder.append(table.getRow(row).get(column)).append(" ");
+                    String[] tokens = table.getRow(row).get(column).split("/");
+                    String entity = tokens[tokens.length - 1].replace("_", " ").trim().replaceAll("[\\r\\n]+", "");
+                    builder.append(entity).append(" ");
                 }
             }
 
