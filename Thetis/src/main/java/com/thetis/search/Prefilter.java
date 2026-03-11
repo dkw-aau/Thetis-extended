@@ -4,6 +4,7 @@ import com.thetis.store.EmbeddingsIndex;
 import com.thetis.store.EntityLinking;
 import com.thetis.store.EntityTable;
 import com.thetis.store.EntityTableLink;
+import com.thetis.store.hnsw.HNSW;
 import com.thetis.store.lsh.SetLSHIndex;
 import com.thetis.store.lsh.VectorLSHIndex;
 import com.thetis.structures.Id;
@@ -20,8 +21,7 @@ import java.util.*;
 public class Prefilter extends AbstractSearch
 {
     private long elapsed = -1;
-    private SetLSHIndex setLSH;
-    private VectorLSHIndex vectorsLSH;
+    private HNSW hnsw;
     private BM25 bm25;
     private static final int SIZE_THRESHOLD = 8;
     private static final int SPLITS_SIZE = 3;
@@ -33,20 +33,10 @@ public class Prefilter extends AbstractSearch
     }
 
     public Prefilter(EntityLinking linker, EntityTable entityTable, EntityTableLink entityTableLink,
-                     EmbeddingsIndex<Id> embeddingsIndex, SetLSHIndex setLSHIndex)
+                     EmbeddingsIndex<Id> embeddingsIndex, HNSW hnsw)
     {
         this(linker, entityTable, entityTableLink, embeddingsIndex);
-        this.setLSH = setLSHIndex;
-        this.vectorsLSH = null;
-        this.bm25 = null;
-    }
-
-    public Prefilter(EntityLinking linker, EntityTable entityTable, EntityTableLink entityTableLink,
-            EmbeddingsIndex<Id> embeddingsIndex, VectorLSHIndex vectorLSHIndex)
-    {
-        this(linker, entityTable, entityTableLink, embeddingsIndex);
-        this.vectorsLSH = vectorLSHIndex;
-        this.setLSH = null;
+        this.hnsw = hnsw;
         this.bm25 = null;
     }
 
@@ -54,8 +44,7 @@ public class Prefilter extends AbstractSearch
                      EmbeddingsIndex<Id> embeddingsIndex, BM25 bm25)
     {
         this(linker, entityTable, entityTableLink, embeddingsIndex);
-        this.vectorsLSH = null;
-        this.setLSH = null;
+        this.hnsw = null;
         this.bm25 = bm25;
     }
 
@@ -127,7 +116,7 @@ public class Prefilter extends AbstractSearch
 
             else
             {
-                candidates.addAll(searchLSH(entities));
+                candidates.addAll(searchHNSW(entities));
             }
         }
 
@@ -154,22 +143,16 @@ public class Prefilter extends AbstractSearch
         return subTables;
     }
 
-    private Set<String> searchLSH(Set<String> entities)
+    private Set<String> searchHNSW(Set<String> entities)
     {
-        String[] entityArr = new String[entities.size()];
-        int i = 0;
+        Set<String> tables = new HashSet<>();
 
         for (String entity : entities)
         {
-            entityArr[i++] = entity;
+            tables.addAll(this.hnsw.find(entity));
         }
 
-        if (this.setLSH != null)
-        {
-            return this.setLSH.agggregatedSearch(entityArr);
-        }
-
-        return this.vectorsLSH.agggregatedSearch(entityArr);
+        return tables;
     }
 
     private Set<String> searchBM25(Set<String> entities)

@@ -99,10 +99,8 @@ We published a resource paper containing the full WikiTables dataset with querie
    mvn package
    
    # From inside Docker
-   java -Xms25g -jar target/Thetis.0.1.jar index --table-type wikitables --table-dir /data/SemanticTableSearchDataset/table_corpus/tables_2013/ --output-dir /data/index/wikitables/ -t 4 -pv 30 -bs 10
+   java -Xms25g -jar target/Thetis.0.1.jar index --table-type wikitables --table-dir /data/SemanticTableSearchDataset/table_corpus/tables_2013/ --output-dir /data/index/wikitables/ -t 4
    ```
-
-   `-pv` is number of permutation vectors for Locality-Sensitive Index (LSH) index of entity types and this number also defines the number of projections in the vector/embedding LSH index. `-bs` is the size of LSH bands (must be divisible by the number of permutation vectors).
 
 3. Materialize table to entity edges in the Graph
 
@@ -128,7 +126,7 @@ The standard approach to perform top-100 semantic table search is the following:
 mkdir -p /data/output/
 java -Xms25g -jar target/Thetis.0.1.jar search --search-mode analogous -topK 100 -i /data/index/wikitables/ -prop types \
     -q /data/SemanticTableSearchDataset/queries/2013/1_tuples_per_query/ -td /data/SemanticTableSearchDataset/table_corpus/tables_2013/ -od /data/output/ \
-   -t 4 -pf LSH_EMBEDDINGS --singleColumnPerQueryEntity --useMaxSimilarityPerColumn
+   -t 4 -pf HNSW --singleColumnPerQueryEntity --useMaxSimilarityPerColumn
 ```
 
 The `-prop` flag determines the entity similarity function. Usniog `types` uses Jaccard similarity of entity types, whereas `predicates` uses the Jaccard similarity of entity predicates.
@@ -136,7 +134,7 @@ Alternatively, `embeddings` uses the cosine similarity of entity embeddings.
 For this option, you must additionally specify the cosine function using the flag `--embeddingSimilarityFunction` and pass one of `norm_cos`, `abs_cos`, and `ang_cos`.
 
 The flag `-q` specifies the directory in which the queries reside, and `-t` specifies the number of threads.
-The flag `-pf` specifies the prefiltering LSH index.
+The flag `-pf` specifies search space prefiltering with HNSW.
 Available values for this flag are `LSH_TYPES`, `LSH_PREDICATES`, and `LSH_EMBEDDINGS`.
 
 The results can now be found in `data/output/`.

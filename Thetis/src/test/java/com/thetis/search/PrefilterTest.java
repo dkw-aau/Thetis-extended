@@ -30,8 +30,7 @@ import static org.junit.Assert.*;
 public class PrefilterTest
 {
     private final File outDir = new File("testing/output");
-    private Prefilter setPrefilter;
-    private Prefilter embeddingsPrefilter;
+    private Prefilter prefilter;
     private PairNonComparable<Table<String>, String> singleQuery, nQuery;
 
     @Before
@@ -52,8 +51,7 @@ public class PrefilterTest
         EntityTable entityTable = indexWriter.getEntityTable();
         EntityTableLink tableLink = indexWriter.getEntityTableLinker();
         EmbeddingsIndex<Id> embeddingsIdx = indexWriter.getEmbeddingsIndex();
-        this.setPrefilter = new Prefilter(linker, entityTable, tableLink, embeddingsIdx, indexWriter.getTypesLSH());
-        this.embeddingsPrefilter = new Prefilter(linker, entityTable, tableLink, embeddingsIdx, indexWriter.getEmbeddingsLSH());
+        this.prefilter = new Prefilter(linker, entityTable, tableLink, embeddingsIdx, indexWriter.getHNSW());
 
         String singleUri = linker.mapTo("http://www.wikipedia.org/wiki/WebOS");
         this.singleQuery = new PairNonComparable<>(new DynamicTable<>(List.of(List.of(singleUri))), "table-0001-2.json");

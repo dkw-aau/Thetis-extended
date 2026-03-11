@@ -36,7 +36,6 @@
       <version>2.8.6</version>
     </dependency>
 
-
     <dependency> <!-- used for Bloom Filter -->
       <groupId>com.google.guava</groupId>
       <artifactId>guava</artifactId>
@@ -123,7 +122,6 @@
       <version>2.0.4</version>
     </dependency>
 
-    <!-- https://mvnrepository.com/artifact/org.postgresql/postgresql -->
     <dependency>
       <groupId>org.postgresql</groupId>
       <artifactId>postgresql</artifactId>
@@ -158,6 +156,12 @@
       <groupId>org.apache.lucene</groupId>
       <artifactId>lucene-queryparser</artifactId>
       <version>9.5.0</version>
+    </dependency>
+
+    <dependency>
+      <groupId>com.stepstone.search.hnswlib.jna</groupId>
+      <artifactId>hnswlib-jna</artifactId>
+      <version>1.4.2</version>
     </dependency>
   </dependencies>
 

@@ -53,12 +53,12 @@ public class MockNeo4jEndpoint implements Neo4jSemanticDriver
     @Override
     public Long getNumEdges()
     {
-        return 0L;
+        return 10000L;
     }
 
     @Override
     public Long getNumNodes() {
-        return 0L;
+        return 10000L;
     }
 
     @Override

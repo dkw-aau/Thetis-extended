@@ -36,8 +36,7 @@ public class IndexReaderTest
         synchronized (TestUtils.lock)
         {
             Configuration.reloadConfiguration();
-            Configuration.setPermutationVectors(10);
-            Configuration.setBandSize(5);
+            Configuration.setEmbeddingsDimension(200);
             DBDriverBatch<List<Double>, String> embeddingsDB = new MockEmbeddingsDB(200);
             Neo4jSemanticDriver endpoint = new MockNeo4jEndpoint();
             List<Path> paths = List.of(Path.of("table-0072-223.json"), Path.of("table-0314-885.json"),
@@ -46,7 +45,7 @@ public class IndexReaderTest
             IndexWriter writer = new IndexWriter(paths, outDir, new MockLinker(), endpoint, 1,
                     embeddingsDB, "http://www.wikipedia.org/", "http://dbpedia.org/");
             writer.performIO();
-            reader = new IndexReader(outDir, false, true, endpoint, embeddingsDB);
+            reader = new IndexReader(outDir, false, true, embeddingsDB);
             reader.performIO();
         }
     }
