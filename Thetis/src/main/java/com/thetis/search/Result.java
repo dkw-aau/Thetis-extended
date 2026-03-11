@@ -8,7 +8,7 @@ import java.util.List;
 /**
  * Container of top-K search result in sorted descending order
  */
-public class Result
+public class Result implements Iterable<Pair<String, Double>>
 {
     private int k, size;
     private List<Pair<String, Double>> tableScores;
@@ -48,5 +48,11 @@ public class Result
             return this.tableScores.iterator();
 
         return this.tableScores.subList(0, this.k).iterator();
+    }
+
+    @Override
+    public Iterator<Pair<String, Double>> iterator()
+    {
+        return getResults();
     }
 }

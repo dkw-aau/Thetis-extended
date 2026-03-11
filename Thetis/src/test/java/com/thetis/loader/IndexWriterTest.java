@@ -12,11 +12,11 @@ import com.thetis.system.Configuration;
 import org.junit.*;
 
 import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -24,11 +24,11 @@ import static org.junit.Assert.*;
 
 public class IndexWriterTest
 {
-    private IndexWriter writer;
-    private final File outDir = new File("testing/output");
+    private static IndexWriter writer;
+    private static final File outDir = new File("testing/output/");
 
-    @Before
-    public void setup() throws IOException
+    @BeforeClass
+    public static void setup() throws IOException
     {
         synchronized (TestUtils.lock)
         {
@@ -40,27 +40,46 @@ public class IndexWriterTest
             List<Path> paths = List.of(Path.of("table-0072-223.json"), Path.of("table-0314-885.json"),
                     Path.of("table-0782-820.json"), Path.of("table-1019-555.json"), Path.of("table-1260-258.json"));
             paths = paths.stream().map(t -> Path.of("testing/data/" + t.toString())).collect(Collectors.toList());
-            this.writer = new IndexWriter(paths, this.outDir, new MockLinker(), endpoint, 1, embeddingsDB,
+            writer = new IndexWriter(paths, outDir, new MockLinker(), endpoint, 1, embeddingsDB,
                     "http://www.wikipedia.org/", "http://dbpedia.org/");
-            this.writer.performIO();
+            writer.performIO();
         }
     }
 
-    @After
-    public void tearDown()
+    @AfterClass
+    public static void tearDown()
     {
         synchronized (TestUtils.lock)
         {
-            this.outDir.delete();
+            File luceneDir = new File(outDir.getAbsolutePath() + "/lucene/"), statDir = new File(outDir.getAbsolutePath() + "/statistics/");
+
+            for (File file : Objects.requireNonNull(luceneDir.listFiles()))
+            {
+                file.delete();
+            }
+
+            for (File file : Objects.requireNonNull(statDir.listFiles()))
+            {
+                file.delete();
+            }
+
+            for (File file : Objects.requireNonNull(outDir.listFiles()))
+            {
+                file.delete();
+            }
+
+            luceneDir.delete();
+            statDir.delete();
+            outDir.delete();
         }
     }
 
     @Test
     public void testIndexes()
     {
-        EntityLinking linker = this.writer.getEntityLinker();
-        EntityTable entityTable = this.writer.getEntityTable();
-        EntityTableLink entityTableLink = this.writer.getEntityTableLinker();
+        EntityLinking linker = writer.getEntityLinker();
+        EntityTable entityTable = writer.getEntityTable();
+        EntityTableLink entityTableLink = writer.getEntityTableLinker();
         assertEquals(143, entityTable.size());
         assertEquals(entityTable.size(), entityTableLink.size());
 
@@ -76,16 +95,16 @@ public class IndexWriterTest
     }
 
     @Test
-    public void testStats()
+    public synchronized void testStats()
     {
-        assertEquals(5, this.writer.loadedTables());
-        assertEquals(197, this.writer.cellsWithLinks());
+        assertEquals(5, writer.loadedTables());
+        assertEquals(197, writer.cellsWithLinks());
     }
 
     @Test
-    public void testLinker()
+    public synchronized void testLinker()
     {
-        EntityLinking linker = this.writer.getEntityLinker();
+        EntityLinking linker = writer.getEntityLinker();
         assertEquals("http://dbpedia.org/resource/1963_Formula_One_season", linker.mapTo("http://www.wikipedia.org/wiki/1963_Formula_One_season"));
         assertEquals("http://www.wikipedia.org/wiki/1963_Formula_One_season", linker.mapFrom("http://dbpedia.org/resource/1963_Formula_One_season"));
         assertEquals("http://dbpedia.org/resource/Windows_Phone_7", linker.mapTo("http://www.wikipedia.org/wiki/Windows_Phone_7"));
@@ -98,10 +117,10 @@ public class IndexWriterTest
     }
 
     @Test
-    public void testEntityTable()
+    public synchronized void testEntityTable()
     {
-        EntityTable entityTable = this.writer.getEntityTable();
-        EntityLinking linker = this.writer.getEntityLinker();
+        EntityTable entityTable = writer.getEntityTable();
+        EntityLinking linker = writer.getEntityLinker();
         Entity ent1 = entityTable.find(linker.kgUriLookup("http://dbpedia.org/resource/Boston_Bruins")),
                 ent2 = entityTable.find(linker.kgUriLookup("http://dbpedia.org/resource/NEC_Cup"));
         Set<String> ent1Types = Set.of("https://www.w3.org/2002/07/owl#Thing", "https://dbpedia.org/ontology/Person", "https://www.wikidata.org/wiki/Q5"),
@@ -112,8 +131,8 @@ public class IndexWriterTest
         assertEquals("http://dbpedia.org/resource/NEC_Cup", ent2.getUri());
 
         // Checking entity IDFs
-        assertEquals(Math.log10(this.writer.loadedTables()) + 1, ent1.getIDF(), 0.0001);
-        assertEquals(Math.log10(this.writer.loadedTables()) + 1, ent2.getIDF(), 0.0001);
+        assertEquals(Math.log10(writer.loadedTables()) + 1, ent1.getIDF(), 0.0001);
+        assertEquals(Math.log10(writer.loadedTables()) + 1, ent2.getIDF(), 0.0001);
 
         // Checking types
         assertEquals(ent1Types.size(), ent1.getTypes().size());
@@ -133,10 +152,10 @@ public class IndexWriterTest
     }
 
     @Test
-    public void testEntityTableLink()
+    public synchronized void testEntityTableLink()
     {
-        EntityTableLink entityTableLink = this.writer.getEntityTableLinker();
-        EntityLinking linking = this.writer.getEntityLinker();
+        EntityTableLink entityTableLink = writer.getEntityTableLinker();
+        EntityLinking linking = writer.getEntityLinker();
 
         assertEquals(1, entityTableLink.find(linking.kgUriLookup("http://dbpedia.org/resource/1963_Formula_One_season")).size());
         assertEquals("table-0072-223.json", entityTableLink.find(linking.kgUriLookup("http://dbpedia.org/resource/1963_Formula_One_season")).get(0));

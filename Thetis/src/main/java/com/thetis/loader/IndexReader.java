@@ -8,6 +8,7 @@ import com.thetis.store.EntityTable;
 import com.thetis.store.EntityTableLink;
 import com.thetis.store.lsh.VectorLSHIndex;
 import com.thetis.store.lsh.SetLSHIndex;
+import com.thetis.store.lucene.LuceneIndex;
 import com.thetis.structures.Id;
 import com.thetis.system.Configuration;
 import com.thetis.system.Logger;
@@ -34,9 +35,10 @@ public class IndexReader implements IndexIO
     private EmbeddingsIndex<Id> embeddingsIdx;
     private SetLSHIndex typesLSHIndex, predicatesLSHIndex;
     private VectorLSHIndex embeddingsLSHIndex;
+    private LuceneIndex luceneIndex;
     private Neo4jSemanticDriver neo4j;
     private DBDriver<List<Double>, String> embedddingsDB;
-    private static final int INDEX_COUNT = 5;
+    private static final int INDEX_COUNT = 6;
 
     public IndexReader(File indexDir, boolean isMultithreaded, boolean logProgress, Neo4jSemanticDriver neo4j, DBDriver<List<Double>, String> embedddingsDB)
     {
@@ -70,12 +72,13 @@ public class IndexReader implements IndexIO
         Future<?> f3 = threadPoolService.submit(this::loadEntityTableLink);
         Future<?> f4 = threadPoolService.submit(this::loadLSHIndexes);
         Future<?> f5 = threadPoolService.submit(this::loadEmbeddingsIndex);
+        Future<?> f6 = threadPoolService.submit(this::loadLucene);
         int completed = -1;
 
-        while (!f1.isDone() || !f2.isDone() || !f3.isDone() || !f4.isDone() || !f5.isDone())
+        while (!f1.isDone() || !f2.isDone() || !f3.isDone() || !f4.isDone() || !f5.isDone() || !f6.isDone())
         {
             int tmpCompleted = (f1.isDone() ? 1 : 0) + (f2.isDone() ? 1 : 0) + (f3.isDone() ? 1 : 0) +
-                    (f4.isDone() ? 1 : 0) + (f5.isDone() ? 1 : 0);
+                    (f4.isDone() ? 1 : 0) + (f5.isDone() ? 1 : 0) + (f6.isDone() ? 1 : 0);
 
             if (tmpCompleted != completed)
             {
@@ -93,6 +96,7 @@ public class IndexReader implements IndexIO
             f3.get();
             f4.get();
             f5.get();
+            f6.get();
         }
 
         catch (InterruptedException | ExecutionException e)
@@ -131,6 +135,19 @@ public class IndexReader implements IndexIO
         this.typesLSHIndex.useNeo4j(this.neo4j);
         this.predicatesLSHIndex.useNeo4j(this.neo4j);
         this.embeddingsLSHIndex.useEmbeddingsDB(this.embedddingsDB);
+    }
+
+    private void loadLucene()
+    {
+        try
+        {
+            this.luceneIndex = new LuceneIndex(this.indexDir.getAbsolutePath() + "/lucene/", 100);
+        }
+
+        catch (IOException e)
+        {
+            throw new RuntimeException(e);
+        }
     }
 
     private Object readIndex(String file)
@@ -195,5 +212,10 @@ public class IndexReader implements IndexIO
     public VectorLSHIndex getEmbeddingsLSHIndex()
     {
         return this.embeddingsLSHIndex;
+    }
+
+    public LuceneIndex getLuceneIndex()
+    {
+        return this.luceneIndex;
     }
 }

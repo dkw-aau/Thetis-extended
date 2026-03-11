@@ -9,8 +9,8 @@ import com.thetis.structures.Id;
 import com.thetis.structures.graph.Entity;
 import com.thetis.structures.graph.Type;
 import com.thetis.system.Configuration;
-import org.junit.After;
-import org.junit.Before;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.io.File;
@@ -18,6 +18,7 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -26,11 +27,11 @@ import static org.junit.Assert.assertTrue;
 
 public class IndexReaderTest
 {
-    private IndexReader reader;
-    private final File outDir = new File("testing/output");
+    private static IndexReader reader;
+    private static final File outDir = new File("testing/output");
 
-    @Before
-    public void setup() throws IOException
+    @BeforeClass
+    public static void setup() throws IOException
     {
         synchronized (TestUtils.lock)
         {
@@ -42,29 +43,48 @@ public class IndexReaderTest
             List<Path> paths = List.of(Path.of("table-0072-223.json"), Path.of("table-0314-885.json"),
                     Path.of("table-0782-820.json"), Path.of("table-1019-555.json"), Path.of("table-1260-258.json"));
             paths = paths.stream().map(t -> Path.of("testing/data/" + t.toString())).collect(Collectors.toList());
-            IndexWriter writer = new IndexWriter(paths, this.outDir, new MockLinker(), endpoint, 1,
+            IndexWriter writer = new IndexWriter(paths, outDir, new MockLinker(), endpoint, 1,
                     embeddingsDB, "http://www.wikipedia.org/", "http://dbpedia.org/");
             writer.performIO();
-            this.reader = new IndexReader(this.outDir, false, true, endpoint, embeddingsDB);
-            this.reader.performIO();
+            reader = new IndexReader(outDir, false, true, endpoint, embeddingsDB);
+            reader.performIO();
         }
     }
 
-    @After
-    public void tearDown()
+    @AfterClass
+    public static void tearDown()
     {
         synchronized (TestUtils.lock)
         {
-            this.outDir.delete();
+            File luceneDir = new File(outDir.getAbsolutePath() + "/lucene/"), statDir = new File(outDir.getAbsolutePath() + "/statistics/");
+
+            for (File file : Objects.requireNonNull(luceneDir.listFiles()))
+            {
+                file.delete();
+            }
+
+            for (File file : Objects.requireNonNull(statDir.listFiles()))
+            {
+                file.delete();
+            }
+
+            for (File file : Objects.requireNonNull(outDir.listFiles()))
+            {
+                file.delete();
+            }
+
+            luceneDir.delete();
+            statDir.delete();
+            outDir.delete();
         }
     }
 
     @Test
     public void testIndexes()
     {
-        EntityLinking linker = this.reader.getLinker();
-        EntityTable entityTable = this.reader.getEntityTable();
-        EntityTableLink entityTableLink = this.reader.getEntityTableLink();
+        EntityLinking linker = reader.getLinker();
+        EntityTable entityTable = reader.getEntityTable();
+        EntityTableLink entityTableLink = reader.getEntityTableLink();
         assertEquals(entityTable.size(), entityTableLink.size());
 
         int count = 0;
@@ -82,7 +102,7 @@ public class IndexReaderTest
     @Test
     public void testLinker()
     {
-        EntityLinking linker = this.reader.getLinker();
+        EntityLinking linker = reader.getLinker();
         assertEquals("http://dbpedia.org/resource/1963_Formula_One_season", linker.mapTo("http://www.wikipedia.org/wiki/1963_Formula_One_season"));
         assertEquals("http://www.wikipedia.org/wiki/1963_Formula_One_season", linker.mapFrom("http://dbpedia.org/resource/1963_Formula_One_season"));
         assertEquals("http://dbpedia.org/resource/Windows_Phone_7", linker.mapTo("http://www.wikipedia.org/wiki/Windows_Phone_7"));
@@ -97,8 +117,8 @@ public class IndexReaderTest
     @Test
     public void testEntityTable()
     {
-        EntityTable entityTable = this.reader.getEntityTable();
-        EntityLinking linker = this.reader.getLinker();
+        EntityTable entityTable = reader.getEntityTable();
+        EntityLinking linker = reader.getLinker();
         Entity ent1 = entityTable.find(linker.kgUriLookup("http://dbpedia.org/resource/Boston_Bruins")),
                 ent2 = entityTable.find(linker.kgUriLookup("http://dbpedia.org/resource/NEC_Cup"));
         Set<String> ent1Types = Set.of("https://www.w3.org/2002/07/owl#Thing", "https://dbpedia.org/ontology/Person", "https://www.wikidata.org/wiki/Q5"),
@@ -128,8 +148,8 @@ public class IndexReaderTest
     @Test
     public void testEntityTableLink()
     {
-        EntityTableLink entityTableLink = this.reader.getEntityTableLink();
-        EntityLinking linking = this.reader.getLinker();
+        EntityTableLink entityTableLink = reader.getEntityTableLink();
+        EntityLinking linking = reader.getLinker();
 
         assertEquals(1, entityTableLink.find(linking.kgUriLookup("http://dbpedia.org/resource/1963_Formula_One_season")).size());
         assertEquals("table-0072-223.json", entityTableLink.find(linking.kgUriLookup("http://dbpedia.org/resource/1963_Formula_One_season")).get(0));
