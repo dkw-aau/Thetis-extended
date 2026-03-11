@@ -6,6 +6,7 @@ import com.thetis.store.EmbeddingsIndex;
 import com.thetis.store.EntityLinking;
 import com.thetis.store.EntityTable;
 import com.thetis.store.EntityTableLink;
+import com.thetis.store.hnsw.HNSW;
 import com.thetis.store.lsh.VectorLSHIndex;
 import com.thetis.store.lsh.SetLSHIndex;
 import com.thetis.store.lucene.LuceneIndex;
@@ -33,14 +34,12 @@ public class IndexReader implements IndexIO
     private EntityTable entityTable;
     private EntityTableLink entityTableLink;
     private EmbeddingsIndex<Id> embeddingsIdx;
-    private SetLSHIndex typesLSHIndex, predicatesLSHIndex;
-    private VectorLSHIndex embeddingsLSHIndex;
+    private HNSW hnsw;
     private LuceneIndex luceneIndex;
-    private Neo4jSemanticDriver neo4j;
     private DBDriver<List<Double>, String> embedddingsDB;
     private static final int INDEX_COUNT = 6;
 
-    public IndexReader(File indexDir, boolean isMultithreaded, boolean logProgress, Neo4jSemanticDriver neo4j, DBDriver<List<Double>, String> embedddingsDB)
+    public IndexReader(File indexDir, boolean isMultithreaded, boolean logProgress, DBDriver<List<Double>, String> embedddingsDB)
     {
         if (!indexDir.isDirectory())
         {
@@ -55,7 +54,6 @@ public class IndexReader implements IndexIO
         this.indexDir = indexDir;
         this.multithreaded = isMultithreaded;
         this.logProgress = logProgress;
-        this.neo4j = neo4j;
         this.embedddingsDB = embedddingsDB;
     }
 
@@ -70,7 +68,7 @@ public class IndexReader implements IndexIO
         Future<?> f1 = threadPoolService.submit(this::loadEntityLinker);
         Future<?> f2 = threadPoolService.submit(this::loadEntityTable);
         Future<?> f3 = threadPoolService.submit(this::loadEntityTableLink);
-        Future<?> f4 = threadPoolService.submit(this::loadLSHIndexes);
+        Future<?> f4 = threadPoolService.submit(this::loadHNSWIndex);
         Future<?> f5 = threadPoolService.submit(this::loadEmbeddingsIndex);
         Future<?> f6 = threadPoolService.submit(this::loadLucene);
         int completed = -1;
@@ -127,14 +125,10 @@ public class IndexReader implements IndexIO
         this.embeddingsIdx = (EmbeddingsIndex<Id>) readIndex(this.indexDir + "/" + Configuration.getEmbeddingsIndexFile());
     }
 
-    private void loadLSHIndexes()
+    private void loadHNSWIndex()
     {
-        this.typesLSHIndex = (SetLSHIndex) readIndex(this.indexDir + "/" + Configuration.getTypesLSHIndexFile());
-        this.predicatesLSHIndex = (SetLSHIndex) readIndex(this.indexDir + "/" + Configuration.getPredicatesLSHIndexFile());
-        this.embeddingsLSHIndex = (VectorLSHIndex) readIndex(this.indexDir + "/" + Configuration.getEmbeddingsLSHFile());
-        this.typesLSHIndex.useNeo4j(this.neo4j);
-        this.predicatesLSHIndex.useNeo4j(this.neo4j);
-        this.embeddingsLSHIndex.useEmbeddingsDB(this.embedddingsDB);
+        this.hnsw = readHNSW();
+        this.hnsw.load();
     }
 
     private void loadLucene()
@@ -179,6 +173,26 @@ public class IndexReader implements IndexIO
         }
     }
 
+    private HNSW readHNSW()
+    {
+        try (ObjectInputStream stream = new ObjectInputStream(new FileInputStream(this.indexDir + "/" + Configuration.getHNSWParamsFile())))
+        {
+            int embeddingsDimension = stream.readInt();
+            long capacity = stream.readLong();
+            int neighborhoodSize = stream.readInt();
+            String indexPath = stream.readUTF();
+
+            return new HNSW(entity -> this.embeddingsIdx.find(this.linker.kgUriLookup(entity.getUri())),
+                    embeddingsDimension, capacity, neighborhoodSize, null, null, null, indexPath);
+        }
+
+        catch (IOException e)
+        {
+            Logger.log(Logger.Level.ERROR, "IO error when reading HNSW index");
+            throw new RuntimeException(e.getMessage());
+        }
+    }
+
     public EntityLinking getLinker()
     {
         return this.linker;
@@ -199,19 +213,9 @@ public class IndexReader implements IndexIO
         return this.embeddingsIdx;
     }
 
-    public SetLSHIndex getTypesLSHIndex()
+    public HNSW getHnsw()
     {
-        return this.typesLSHIndex;
-    }
-
-    public SetLSHIndex getPredicatesLSHIndex()
-    {
-        return this.predicatesLSHIndex;
-    }
-
-    public VectorLSHIndex getEmbeddingsLSHIndex()
-    {
-        return this.embeddingsLSHIndex;
+        return this.hnsw;
     }
 
     public LuceneIndex getLuceneIndex()

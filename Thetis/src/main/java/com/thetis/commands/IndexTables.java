@@ -148,28 +148,6 @@ public class IndexTables extends Command {
         this.disallowedEntityTypes = argument.split(",");
     }
 
-    @CommandLine.Option(names = {"-pv", "--permutation-vectors"}, paramLabel = "PERMUTATION-VECTORS", description = "Number of permutation vectors to build entity signatures in LSH index", defaultValue = "15")
-    public void setPermutationVectors(int value)
-    {
-        if (value <= 0)
-        {
-            throw new CommandLine.ParameterException(spec.commandLine(), "Number of permutation vectors must be positive");
-        }
-
-        Configuration.setPermutationVectors(value);
-    }
-
-    @CommandLine.Option(names = {"-bs", "--band-size"}, paramLabel = "BAND-SIZE", description = "Size of bands in LSH index of entity types", defaultValue = "4")
-    public void setBandSize(int val)
-    {
-        if (val <= 1)
-        {
-            throw new CommandLine.ParameterException(spec.commandLine(), "Band size must be greater than 0");
-        }
-
-        Configuration.setBandSize(val);
-    }
-
     @CommandLine.Option(names = {"-link", "--entity-linker"}, description = "Type of entity linking", required = true, defaultValue = "wikilink")
     private Linking linking;
 

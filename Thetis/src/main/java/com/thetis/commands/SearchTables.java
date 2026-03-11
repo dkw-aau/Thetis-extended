@@ -26,6 +26,7 @@ import com.thetis.store.EmbeddingsIndex;
 import com.thetis.store.EntityLinking;
 import com.thetis.store.EntityTable;
 import com.thetis.store.EntityTableLink;
+import com.thetis.store.hnsw.HNSW;
 import com.thetis.store.lsh.SetLSHIndex;
 import com.thetis.store.lsh.VectorLSHIndex;
 import com.thetis.store.lucene.LuceneIndex;
@@ -105,7 +106,7 @@ public class SearchTables extends Command {
         }
     }
 
-    private enum PrefilterTechnique {LSH_TYPES, LSH_PREDICATES, LSH_EMBEDDINGS, PPR, BM25}
+    private enum PrefilterTechnique {HNSW, BM25}
 
     @CommandLine.Option(names = { "-sm", "--search-mode" }, description = "Must be one of {exact, analogous, lucene}", required = true)
     private SearchMode searchMode = null;
@@ -235,7 +236,7 @@ public class SearchTables extends Command {
     @CommandLine.Option(names = {"-t", "--threads"}, description = "Number of threads", required = true, defaultValue = "1")
     private int threads;
 
-    @CommandLine.Option(names = {"-pf", "--pre-filter"}, description = "Pre-filtering technique to reduce search space (LSH_TYPES, LSH_PREDICATES, LSH_EMBEDDINGS, BM25, PPR)")
+    @CommandLine.Option(names = {"-pf", "--pre-filter"}, description = "Pre-filtering technique to reduce search space (HNSW, BM25)")
     private PrefilterTechnique prefilterTechnique = null;
 
     @Override
@@ -259,7 +260,7 @@ public class SearchTables extends Command {
             Neo4jEndpoint connector = new Neo4jEndpoint(this.configFile);
             connector.testConnection();
 
-            IndexReader indexReader = new IndexReader(this.indexDir, true, true, connector, embeddingStore);
+            IndexReader indexReader = new IndexReader(this.indexDir, true, true, embeddingStore);
             indexReader.performIO();
 
             long elapsedTime = System.nanoTime() - startTime;
@@ -269,22 +270,15 @@ public class SearchTables extends Command {
             EntityTable entityTable = indexReader.getEntityTable();
             EntityTableLink entityTableLink = indexReader.getEntityTableLink();
             EmbeddingsIndex<Id> embeddingsIdx = indexReader.getEmbeddingsIndex();
-            SetLSHIndex typesLSH = indexReader.getTypesLSHIndex();
-            SetLSHIndex predicatesLSH = indexReader.getPredicatesLSHIndex();
-            VectorLSHIndex embeddingsLSH = indexReader.getEmbeddingsLSHIndex();
+            HNSW hnsw = indexReader.getHnsw();
             LuceneIndex lucene = indexReader.getLuceneIndex();
             BM25 bm25 = new BM25(linker, entityTable, entityTableLink, embeddingsIdx);
-            typesLSH.useEntityLinker(linker);
-            predicatesLSH.useEntityLinker(linker);
-            embeddingsLSH.useEntityLinker(linker);
             Prefilter prefilter = null;
 
             if (this.prefilterTechnique != null)
             {
-                prefilter = switch (this.prefilterTechnique) {    // TODO: PPR pre-filtering must be implemented
-                    case LSH_TYPES -> new Prefilter(linker, entityTable, entityTableLink, embeddingsIdx, typesLSH);
-                    case LSH_PREDICATES -> new Prefilter(linker, entityTable, entityTableLink, embeddingsIdx, predicatesLSH);
-                    case LSH_EMBEDDINGS -> new Prefilter(linker, entityTable, entityTableLink, embeddingsIdx, embeddingsLSH);
+                prefilter = switch (this.prefilterTechnique) {
+                    case HNSW -> new Prefilter(linker, entityTable, entityTableLink, embeddingsIdx, hnsw);
                     case BM25 -> new Prefilter(linker, entityTable, entityTableLink, embeddingsIdx, bm25);
                     default -> null;
                 };

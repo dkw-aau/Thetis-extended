@@ -87,15 +87,6 @@ public class Configuration
         if (!props.contains("EmbeddingsIndex"))
             props.setProperty("EmbeddingsIndex", "embeddings_idx.ser");
 
-        if (!props.contains("TypesLSH"))
-            props.setProperty("TypesLSH", "types_lsh.ser");
-
-        if (!props.contains("PredicatesLSH"))
-            props.setProperty("PredicatesLSH", "predicates_lsh.ser");
-
-        if (!props.contains("EmbeddingsLSH"))
-            props.setProperty("EmbeddingsLSH", "embeddings_lsh.ser");
-
         if (!props.contains("TableToEntities"))
             props.setProperty("TableToEntities", "tableIDToEntities.ttl");
 
@@ -116,6 +107,12 @@ public class Configuration
 
         if (!props.contains("LuceneDir"))
             props.setProperty("LuceneDir", ".lucene/");
+
+        if (!props.contains("HNSWParams"))
+            props.setProperty("HNSWParams", "hnsw_params.ser");
+
+        if (!props.contains("HNSW"))
+            props.setProperty("HNSW", "hnsw.ser");
 
         writeProperties(props);
     }
@@ -260,21 +257,6 @@ public class Configuration
         return readProperties().getProperty("EmbeddingsIndex");
     }
 
-    public static String getTypesLSHIndexFile()
-    {
-        return readProperties().getProperty("TypesLSH");
-    }
-
-    public static String getPredicatesLSHIndexFile()
-    {
-        return readProperties().getProperty("PredicatesLSH");
-    }
-
-    public static String getEmbeddingsLSHFile()
-    {
-        return readProperties().getProperty("EmbeddingsLSH");
-    }
-
     public static String getTableToEntitiesFile()
     {
         return readProperties().getProperty("TableToEntities");
@@ -310,26 +292,6 @@ public class Configuration
         return readProperties().getProperty("LogLevel");
     }
 
-    public static void setPermutationVectors(int num)
-    {
-        addProperty("PermutationVectors", String.valueOf(num));
-    }
-
-    public static int getPermutationVectors()
-    {
-        return Integer.parseInt(readProperties().getProperty("PermutationVectors"));
-    }
-
-    public static void setBandSize(int value)
-    {
-        addProperty("BandSize", String.valueOf(value));
-    }
-
-    public static int getBandSize()
-    {
-        return Integer.parseInt(readProperties().getProperty("BandSize"));
-    }
-
     public static void setLuceneDir(String dir)
     {
         addProperty("LuceneDir", dir);
@@ -338,5 +300,15 @@ public class Configuration
     public static String getLuceneDir()
     {
         return readProperties().getProperty("LuceneDir");
+    }
+
+    public static String getHNSWParamsFile()
+    {
+        return readProperties().getProperty("HNSWParams");
+    }
+
+    public static String getHNSWFile()
+    {
+        return readProperties().getProperty("HNSW");
     }
 }

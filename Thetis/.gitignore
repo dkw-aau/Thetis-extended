@@ -2,3 +2,4 @@
 target
 testing/output/
 testing/lucene/
+.config.conf

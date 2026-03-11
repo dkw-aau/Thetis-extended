@@ -33,8 +33,7 @@ public class IndexWriterTest
         synchronized (TestUtils.lock)
         {
             Configuration.reloadConfiguration();
-            Configuration.setPermutationVectors(10);
-            Configuration.setBandSize(5);
+            Configuration.setEmbeddingsDimension(200);
             Neo4jSemanticDriver endpoint = new MockNeo4jEndpoint();
             DBDriverBatch<List<Double>, String> embeddingsDB = new MockEmbeddingsDB(200);
             List<Path> paths = List.of(Path.of("table-0072-223.json"), Path.of("table-0314-885.json"),
