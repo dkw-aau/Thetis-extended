@@ -68,15 +68,14 @@ public class IndexReader implements IndexIO
         Future<?> f1 = threadPoolService.submit(this::loadEntityLinker);
         Future<?> f2 = threadPoolService.submit(this::loadEntityTable);
         Future<?> f3 = threadPoolService.submit(this::loadEntityTableLink);
-        Future<?> f4 = threadPoolService.submit(this::loadHNSWIndex);
-        Future<?> f5 = threadPoolService.submit(this::loadEmbeddingsIndex);
-        Future<?> f6 = threadPoolService.submit(this::loadLucene);
+        Future<?> f4 = threadPoolService.submit(this::loadEmbeddingsIndex);
+        Future<?> f5 = threadPoolService.submit(this::loadLucene);
         int completed = -1;
 
-        while (!f1.isDone() || !f2.isDone() || !f3.isDone() || !f4.isDone() || !f5.isDone() || !f6.isDone())
+        while (!f1.isDone() || !f2.isDone() || !f3.isDone() || !f4.isDone() || !f5.isDone())
         {
             int tmpCompleted = (f1.isDone() ? 1 : 0) + (f2.isDone() ? 1 : 0) + (f3.isDone() ? 1 : 0) +
-                    (f4.isDone() ? 1 : 0) + (f5.isDone() ? 1 : 0) + (f6.isDone() ? 1 : 0);
+                    (f4.isDone() ? 1 : 0) + (f5.isDone() ? 1 : 0);
 
             if (tmpCompleted != completed)
             {
@@ -85,6 +84,7 @@ public class IndexReader implements IndexIO
             }
         }
 
+        loadHNSWIndex();
         Logger.log(Logger.Level.INFO, "Loaded indexes: " + INDEX_COUNT + "/" + INDEX_COUNT);
 
         try
@@ -94,7 +94,6 @@ public class IndexReader implements IndexIO
             f3.get();
             f4.get();
             f5.get();
-            f6.get();
         }
 
         catch (InterruptedException | ExecutionException e)
@@ -181,9 +180,11 @@ public class IndexReader implements IndexIO
             long capacity = stream.readLong();
             int neighborhoodSize = stream.readInt();
             String indexPath = stream.readUTF();
+            HNSW hnsw = new HNSW(entity -> this.embeddingsIdx.find(this.linker.kgUriLookup(entity.getUri())),
+                    embeddingsDimension, capacity, neighborhoodSize, this.linker, this.entityTable, this.entityTableLink, indexPath);
+            hnsw.load();
 
-            return new HNSW(entity -> this.embeddingsIdx.find(this.linker.kgUriLookup(entity.getUri())),
-                    embeddingsDimension, capacity, neighborhoodSize, null, null, null, indexPath);
+            return hnsw;
         }
 
         catch (IOException e)
@@ -223,3 +224,4 @@ public class IndexReader implements IndexIO
         return this.luceneIndex;
     }
 }
+
