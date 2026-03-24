@@ -135,7 +135,7 @@ public class IndexReader implements IndexIO
     {
         try
         {
-            this.luceneIndex = new LuceneIndex(this.indexDir.getAbsolutePath() + "/lucene/", 100);
+            this.luceneIndex = new LuceneIndex(this.indexDir.getAbsolutePath() + "/lucene/", 100, true);
         }
 
         catch (IOException e)

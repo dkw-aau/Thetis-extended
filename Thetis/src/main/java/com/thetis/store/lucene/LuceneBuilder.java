@@ -43,7 +43,7 @@ public class LuceneBuilder implements AutoCloseable
         try
         {
             this.writer.close();
-            return new LuceneIndex(this.path, 100);
+            return new LuceneIndex(this.path, 100, true);
         }
 
         catch (IOException e)

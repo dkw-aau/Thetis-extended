@@ -10,8 +10,8 @@ import java.util.List;
  */
 public class Result implements Iterable<Pair<String, Double>>
 {
-    private int k, size;
-    private List<Pair<String, Double>> tableScores;
+    protected int k, size;
+    protected List<Pair<String, Double>> tableScores;
 
     public Result(int k, List<Pair<String, Double>> tableScores)
     {

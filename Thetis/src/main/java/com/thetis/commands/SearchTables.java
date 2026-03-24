@@ -22,6 +22,10 @@ import com.thetis.connector.Neo4jEndpoint;
 import com.thetis.loader.IndexReader;
 import com.thetis.loader.Stats;
 import com.thetis.search.*;
+import com.thetis.search.multicriteria.CombinerPipeline;
+import com.thetis.search.multicriteria.MultiSearch;
+import com.thetis.search.multicriteria.Pareto;
+import com.thetis.search.multicriteria.Topsis;
 import com.thetis.store.EmbeddingsIndex;
 import com.thetis.store.EntityLinking;
 import com.thetis.store.EntityTable;
@@ -56,7 +60,7 @@ public class SearchTables extends Command {
     CommandLine.Model.CommandSpec spec; // injected by picocli
 
     private enum SearchMode {
-        EXACT("exact"), ANALOGOUS("analogous"), PPR("ppr"), LUCENE("lucene");
+        EXACT("exact"), ANALOGOUS("analogous"), PPR("ppr"), LUCENE("lucene"), COMBINED("combined");
 
         private final String mode;
         SearchMode(String mode){
@@ -108,7 +112,7 @@ public class SearchTables extends Command {
 
     private enum PrefilterTechnique {HNSW, BM25}
 
-    @CommandLine.Option(names = { "-sm", "--search-mode" }, description = "Must be one of {exact, analogous, lucene}", required = true)
+    @CommandLine.Option(names = { "-sm", "--search-mode" }, description = "Must be one of {exact, analogous, lucene, combined}", required = true)
     private SearchMode searchMode = null;
 
     @CommandLine.Option(names = { "-scpqe", "--singleColumnPerQueryEntity"}, description = "If specified, each query tuple will be evaluated against only one entity")
@@ -327,6 +331,10 @@ public class SearchTables extends Command {
                     case LUCENE:
                         luceneSearch(queryTable, queryName, lucene, entityTableLink.getDirectory());
                         break;
+
+                    case COMBINED:
+                        combinedSearch(queryTable, queryName, lucene, linker, entityTable, entityTableLink, embeddingsIdx, prefilter, this.tableDir.toPath());
+                        break;
                 }
             }
 
@@ -464,12 +472,8 @@ public class SearchTables extends Command {
         }
     }
 
-    /**
-     * Given a list of entities, return a ranked list of table candidates
-     */
-    public void analogousSearch(Table<String> query, String queryName, EntityLinking linker, EntityTable table,
-                                EntityTableLink tableLink, EmbeddingsIndex<Id> embeddingIdx, Prefilter prefilter,
-                                Path tableDir) throws IOException
+    public AnalogousSearch initAnalogousSearch(EntityLinking linker, EntityTable table, EntityTableLink tableLink,
+                                                EmbeddingsIndex<Id> embeddingIdx, Prefilter prefilter, Path tableDir) throws IOException
     {
         AnalogousSearch search;
         Stream<Path> fileStream = Files.find(tableDir, Integer.MAX_VALUE,
@@ -501,7 +505,17 @@ public class SearchTables extends Command {
         }
 
         search.setCorpus(filePaths.stream().map(Path::toString).collect(Collectors.toSet()));
+        return search;
+    }
 
+    /**
+     * Given a list of entities, return a ranked list of table candidates
+     */
+    public void analogousSearch(Table<String> query, String queryName, EntityLinking linker, EntityTable table,
+                                EntityTableLink tableLink, EmbeddingsIndex<Id> embeddingIdx, Prefilter prefilter,
+                                Path tableDir) throws IOException
+    {
+        AnalogousSearch search = initAnalogousSearch(linker, table, tableLink, embeddingIdx, prefilter, tableDir);
         Result result = search.search(query);
         Iterator<Pair<String, Double>> resultIter = result.getResults();
         List<Pair<String, Double>> scores = new ArrayList<>();
@@ -569,7 +583,7 @@ public class SearchTables extends Command {
     {
         LuceneSearch search = new LuceneSearch(index, this.topK);
         Iterator<Pair<String, Double>> results = search.search(query).getResults();
-        List<Pair<String, Double>> scores = new ArrayList<>();
+        List<Pair<String, Double>> scores = new ArrayList<>(this.topK);
         Logger.logNewLine(Logger.Level.RESULT, "\nTop-" + this.topK + " tables are:");
 
         while (results.hasNext())
@@ -580,7 +594,28 @@ public class SearchTables extends Command {
         }
 
         saveFilenameScores(this.outputDir, tableDir, queryName, scores, new HashMap<>(), Set.of(), search.elapsedNanoSeconds(),
-                -1, -1, 1, -1, 0.0);
+                -1, -1, -1, -1, 0.0);
+    }
+
+    public void combinedSearch(Table<String> query, String queryName, LuceneIndex lucene, EntityLinking linker, EntityTable table,
+                               EntityTableLink tableLink, EmbeddingsIndex<Id> embeddingIdx, Prefilter prefilter, Path tableDir) throws IOException
+    {
+        AnalogousSearch semanticSearch = initAnalogousSearch(linker, table, tableLink, embeddingIdx, prefilter, tableDir);
+        LuceneSearch keywordSearch = new LuceneSearch(lucene, this.topK);
+        CombinerPipeline pipeline = MultiSearch.createPipeline(new Pareto(), new Topsis());
+        MultiSearch combinedSearch = new MultiSearch(pipeline, semanticSearch, keywordSearch);
+        Result results = combinedSearch.search(query);
+        List<Pair<String, Double>> scores = new ArrayList<>(this.topK);
+        Logger.logNewLine(Logger.Level.RESULT, "\nTop-" + this.topK + " tables are:");
+
+        for (Pair<String, Double> result : results)
+        {
+            scores.add(result);
+            Logger.logNewLine(Logger.Level.RESULT, "Filename = " + result.getFirst() + ", score = " + result.getSecond());
+        }
+
+        saveFilenameScores(this.outputDir, tableLink.getDirectory(), queryName, scores, new HashMap<>(), Set.of(), semanticSearch.elapsedNanoSeconds(),
+                -1, -1, -1, -1, semanticSearch.getReduction());
     }
 
     /**

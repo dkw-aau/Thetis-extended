@@ -59,6 +59,7 @@ public class IndexWriter implements IndexIO
     private SynchronizedIndex<Id, List<Double>> embeddingsIdx;
     private SynchronizedIndex<String, Set<String>> hnsw;
     private LuceneBuilder lucenceBuilder;
+    private LuceneIndex luceneIndex;
     private DBDriverBatch<List<Double>, String> embeddingsDB;
     private BloomFilter<String> filter = BloomFilter.create(
             Funnels.stringFunnel(Charset.defaultCharset()),
@@ -542,7 +543,7 @@ public class IndexWriter implements IndexIO
         tmpHNSW.save();
 
         genNeo4jTableMappings();
-        this.lucenceBuilder.build();
+        this.luceneIndex = this.lucenceBuilder.build();
     }
 
     private void genNeo4jTableMappings() throws IOException
@@ -658,6 +659,15 @@ public class IndexWriter implements IndexIO
     public EntityTableLink getEntityTableLinker()
     {
         return (EntityTableLink) this.entityTableLink.getIndex();
+    }
+
+    /**
+     * Getter to Lucene index
+     * @return Loaded lucene index
+     */
+    public LuceneIndex getLuceneIndex()
+    {
+        return this.luceneIndex;
     }
 
     public long getApproximateEntityMentions()
