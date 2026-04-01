@@ -16,6 +16,7 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Index to perform keyword search using Lucene.
@@ -29,10 +30,11 @@ public class LuceneIndex implements Index<String, Result>, AutoCloseable
     private final IndexReader reader;
     private final IndexSearcher searcher;
     private final QueryParser parser;
+    private final boolean applyNormalization;
     static final String DOC_FIELD = "text";
     static final String ID_FIELD = "id";
 
-    public LuceneIndex(String directory, int k) throws IOException
+    public LuceneIndex(String directory, int k, boolean normalizeScores) throws IOException
     {
         this.dir = FSDirectory.open(Path.of(directory));
         this.analyzer = new StandardAnalyzer();
@@ -40,6 +42,7 @@ public class LuceneIndex implements Index<String, Result>, AutoCloseable
         this.searcher = new IndexSearcher(this.reader);
         this.parser = new QueryParser(DOC_FIELD, this.analyzer);
         this.k = k;
+        this.applyNormalization = normalizeScores;
     }
 
     public static LuceneBuilder builder(String indexDir) throws IOException
@@ -91,6 +94,11 @@ public class LuceneIndex implements Index<String, Result>, AutoCloseable
                 ranking.add(new Pair<>(tableId, score));
             }
 
+            if (this.applyNormalization)
+            {
+                ranking = normalizeResults(ranking);
+            }
+
             return new Result(this.k, ranking);
         }
 
@@ -98,6 +106,19 @@ public class LuceneIndex implements Index<String, Result>, AutoCloseable
         {
             throw new RuntimeException(e);
         }
+    }
+
+    private static List<Pair<String, Double>> normalizeResults(List<Pair<String, Double>> results)
+    {
+        List<Pair<String, Double>> normalized = new ArrayList<>(results.size());
+
+        for (Pair<String, Double> result : results)
+        {
+            double sigmoid = 1 / (1 + Math.exp(-result.getSecond()));
+            normalized.add(new Pair<>(result.getFirst(), sigmoid));
+        }
+
+        return normalized;
     }
 
     // This is a slow implementation, as we are initializing all of the necessary classes for every call of this function

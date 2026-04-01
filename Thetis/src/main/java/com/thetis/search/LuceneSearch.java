@@ -15,7 +15,7 @@ public class LuceneSearch extends AbstractSearch
 
     public LuceneSearch(String luceneDir, int k) throws IOException
     {
-        this(new LuceneIndex(luceneDir, k));
+        this(new LuceneIndex(luceneDir, k, true));
     }
 
     public LuceneSearch(LuceneIndex index)
