@@ -614,6 +614,7 @@ public class SearchTables extends Command {
             Logger.logNewLine(Logger.Level.RESULT, "Filename = " + result.getFirst() + ", score = " + result.getSecond());
         }
 
+        scores = scores.subList(0, this.topK);
         saveFilenameScores(this.outputDir, tableLink.getDirectory(), queryName, scores, new HashMap<>(), Set.of(), semanticSearch.elapsedNanoSeconds(),
                 -1, -1, -1, -1, semanticSearch.getReduction());
     }
