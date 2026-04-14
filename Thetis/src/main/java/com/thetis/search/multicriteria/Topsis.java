@@ -22,7 +22,7 @@ public class Topsis extends RankingCombiner
 
             for (int column = 0; column < columns; column++)
             {
-                double normalizedScore = entry.scores().get(column) / squaredSums.get(column);
+                double normalizedScore = squaredSums.get(column) > 0.0 ? entry.scores().get(column) / squaredSums.get(column) : 0.0;
                 bestDistanceSum += Math.pow(normalizedScore - 1, 2);
                 worstDistanceSum += Math.pow(normalizedScore, 2);
             }

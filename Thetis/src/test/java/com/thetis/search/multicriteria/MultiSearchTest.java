@@ -56,7 +56,7 @@ public class MultiSearchTest
     @Test
     public void testSearch()
     {
-        CombinerPipeline pipeline = MultiSearch.createPipeline(new Pareto(), new Pareto());
+        CombinerPipeline pipeline = MultiSearch.createPipeline(new Pareto(), new Topsis());
         MultiSearch search = new MultiSearch(pipeline, this.keywordSearch, this.semanticSearch);
         Table<String> query = new SimpleTable<>(List.of(List.of("http://dbpedia.org/resource/Windows_Mobile", "http://dbpedia.org/resource/Cosworth")));
         Result result = search.search(query);

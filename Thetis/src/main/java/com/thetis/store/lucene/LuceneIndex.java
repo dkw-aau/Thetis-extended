@@ -86,17 +86,23 @@ public class LuceneIndex implements Index<String, Result>, AutoCloseable
             Query query = this.parser.parse(keywordQuery);
             TopDocs topDocs = this.searcher.search(query, this.k);
             List<Pair<String, Double>> ranking = new ArrayList<>();
+            double max = Double.MIN_VALUE;
 
             for (ScoreDoc scoreDoc : topDocs.scoreDocs)
             {
                 double score = scoreDoc.score;
                 String tableId = this.searcher.doc(scoreDoc.doc).get(ID_FIELD);
                 ranking.add(new Pair<>(tableId, score));
+
+                if (score > max)
+                {
+                    max = score;
+                }
             }
 
             if (this.applyNormalization)
             {
-                ranking = normalizeResults(ranking);
+                ranking = normalizeResults(ranking, max);
             }
 
             return new Result(this.k, ranking);
@@ -108,14 +114,14 @@ public class LuceneIndex implements Index<String, Result>, AutoCloseable
         }
     }
 
-    private static List<Pair<String, Double>> normalizeResults(List<Pair<String, Double>> results)
+    private static List<Pair<String, Double>> normalizeResults(List<Pair<String, Double>> results, double maxScore)
     {
         List<Pair<String, Double>> normalized = new ArrayList<>(results.size());
 
         for (Pair<String, Double> result : results)
         {
-            double sigmoid = 1 / (1 + Math.exp(-result.getSecond()));
-            normalized.add(new Pair<>(result.getFirst(), sigmoid));
+            double normalizedScore = Math.log(1 + result.getSecond()) / Math.log(1 + maxScore);
+            normalized.add(new Pair<>(result.getFirst(), normalizedScore));
         }
 
         return normalized;
