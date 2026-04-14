@@ -31,8 +31,6 @@ import com.thetis.store.EntityLinking;
 import com.thetis.store.EntityTable;
 import com.thetis.store.EntityTableLink;
 import com.thetis.store.hnsw.HNSW;
-import com.thetis.store.lsh.SetLSHIndex;
-import com.thetis.store.lsh.VectorLSHIndex;
 import com.thetis.store.lucene.LuceneIndex;
 import com.thetis.structures.graph.Entity;
 import com.thetis.structures.graph.Type;

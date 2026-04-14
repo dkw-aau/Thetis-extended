@@ -64,6 +64,6 @@ public class MultiSearchTest
         assertTrue(result.getResults().hasNext());
         assertEquals(5, result.getSize());
         assertTrue(best.getSecond() > 0.5);
-        assertEquals("table-0782-820.json", best.getFirst());
+        assertEquals("table-0072-223.json", best.getFirst());
     }
 }

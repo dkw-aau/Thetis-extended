@@ -3,8 +3,7 @@ package com.thetis.search.multicriteria;
 import com.thetis.search.Result;
 import com.thetis.structures.Pair;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 import java.util.function.Function;
 
 public class OrderedCombiner implements CombinerPipeline
@@ -60,7 +59,7 @@ public class OrderedCombiner implements CombinerPipeline
             }
         }
 
-        List<Pair<String, Double>> finalRanking = new ArrayList<>(current.size());
+        /*List<Pair<String, Double>> finalRanking = new ArrayList<>(current.size());
 
         for (CombinedRanking.Entry entry : current)
         {
@@ -70,6 +69,51 @@ public class OrderedCombiner implements CombinerPipeline
             finalRanking.add(new Pair<>(id, score));
         }
 
-        return new Result(finalRanking.size(), finalRanking);
+        return new Result(finalRanking.size(), finalRanking);*/
+
+        List<Pair<String, Double>> alignedRanking = enforceOrderingScores(current);
+        return new Result(alignedRanking.size(), alignedRanking);
+    }
+
+    private List<Pair<String, Double>> enforceOrderingScores(CombinedRanking ranking)
+    {
+        Set<Double> uniqueScores = new HashSet<>();
+        Map<String, Double> aggregatedScores = new HashMap<>();
+        double minScore = Double.MAX_VALUE, maxScore = Double.MIN_VALUE;
+
+        for (CombinedRanking.Entry entry : ranking)
+        {
+            double score = this.aggregator.apply(entry.scores());
+            uniqueScores.add(score);
+            aggregatedScores.put(entry.id(), score);
+            minScore = Math.min(minScore, score);
+            maxScore = Math.max(maxScore, score);
+        }
+
+        int unique = uniqueScores.size();
+        int i = 0;
+        double degradationRate = (maxScore - minScore) / unique;
+        double prevScore = -1;
+        List<Pair<String, Double>> alignedScores = new ArrayList<>(ranking.size());
+
+        for (Map.Entry<String, Double> entry : aggregatedScores.entrySet())
+        {
+            double alignedScore;
+
+            if (entry.getValue() == prevScore)
+            {
+                alignedScore = maxScore - (i - 1) * degradationRate;
+            }
+
+            else
+            {
+                alignedScore = maxScore - i++ * degradationRate;
+            }
+
+            prevScore = entry.getValue();
+            alignedScores.add(new Pair<>(entry.getKey(), alignedScore));
+        }
+
+        return alignedScores;
     }
 }

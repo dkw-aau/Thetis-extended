@@ -37,8 +37,8 @@ public class OrderedCombinerTest
             top3.add(resultIter.next());
         }
 
-        assertEquals("id9", top3.get(0).getFirst());
-        assertEquals("id5", top3.get(1).getFirst());
-        assertEquals("id3", top3.get(2).getFirst());
+        assertEquals("id2", top3.get(0).getFirst());
+        assertEquals("id1", top3.get(1).getFirst());
+        assertEquals("id4", top3.get(2).getFirst());
     }
 }
