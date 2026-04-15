@@ -1,10 +1,9 @@
 package com.thetis.search.multicriteria;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
 
+// Requires input scores to be normalized within [0, 1]
 public class Topsis extends RankingCombiner
 {
     @Override
@@ -12,7 +11,6 @@ public class Topsis extends RankingCombiner
     {
         CombinedRanking unifiedRanking = new CombinedRanking();
         List<CombinedRanking.Entry> orderedRanking = new ArrayList<>();
-        List<Double> squaredSums = columnsSquaredSums(multiCriteriaResults);
 
         // Assumes scores have been normalized
         for (CombinedRanking.Entry entry : multiCriteriaResults)
@@ -22,9 +20,9 @@ public class Topsis extends RankingCombiner
 
             for (int column = 0; column < columns; column++)
             {
-                double normalizedScore = squaredSums.get(column) > 0.0 ? entry.scores().get(column) / squaredSums.get(column) : 0.0;
-                bestDistanceSum += Math.pow(normalizedScore - 1, 2);
-                worstDistanceSum += Math.pow(normalizedScore, 2);
+                double score = entry.scores().get(column);
+                bestDistanceSum += Math.pow(score - 1, 2);
+                worstDistanceSum += Math.pow(score, 2);
             }
 
             double bestDistance = Math.sqrt(bestDistanceSum), worstDistance = Math.sqrt(worstDistanceSum),
@@ -35,22 +33,5 @@ public class Topsis extends RankingCombiner
         orderedRanking.sort((e1, e2) -> Double.compare(e2.scores().get(0), e1.scores().get(0)));
         orderedRanking.forEach(unifiedRanking::addEntry);
         return unifiedRanking;
-    }
-
-    private static List<Double> columnsSquaredSums(CombinedRanking ranking)
-    {
-        int columns = ranking.iterator().next().scores().size();
-        List<Double> squaredSums = new ArrayList<>(Collections.nCopies(columns, 0.0));
-
-        for (CombinedRanking.Entry entry : ranking)
-        {
-            for (int column = 0; column < columns; column++)
-            {
-                double prevValue = squaredSums.get(column);
-                squaredSums.set(column, prevValue + Math.pow(entry.scores().get(column), 2));
-            }
-        }
-
-        return squaredSums.stream().map(Math::sqrt).collect(Collectors.toList());
     }
 }

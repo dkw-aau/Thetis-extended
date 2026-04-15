@@ -59,8 +59,16 @@ public class OrderedCombiner implements CombinerPipeline
             }
         }
 
-        List<Pair<String, Double>> alignedRanking = enforceOrderingScores(current);
-        return new Result(alignedRanking.size(), alignedRanking);
+        List<Pair<String, Double>> ranking = new ArrayList<>(current.size());
+
+        for (CombinedRanking.Entry entry : current)
+        {
+            ranking.add(new Pair<>(entry.id(), this.aggregator.apply(entry.scores())));
+        }
+
+        //List<Pair<String, Double>> alignedRanking = enforceOrderingScores(current);
+        //return new Result(alignedRanking.size(), alignedRanking);
+        return new Result(ranking.size(), ranking);
     }
 
     private List<Pair<String, Double>> enforceOrderingScores(CombinedRanking ranking)
