@@ -26,7 +26,7 @@ public class OrderedCombinerTest
                 e9 = new CombinedRanking.Entry("id9", List.of(0.7, 0.3, 0.9)),
                 e10 = new CombinedRanking.Entry("id10", List.of(0.2, 0.4, 0.8));
         CombinedRanking input = new CombinedRanking(e1, e2, e3, e4, e5, e6, e7, e8, e9, e10);
-        CombinerPipeline pipeline = new OrderedCombiner(List.of(new Pareto(), new Topsis()));
+        CombinerPipeline pipeline = new OrderedCombiner(List.of(new Pareto(), new Topsis(List.of(0.3, 0.3, 0.4))));
         Result result = pipeline.combine(input);
         Iterator<Pair<String, Double>> resultIter = result.getResults();
         List<Pair<String, Double>> top3 = new ArrayList<>(3);
@@ -37,8 +37,8 @@ public class OrderedCombinerTest
             top3.add(resultIter.next());
         }
 
-        assertEquals("id2", top3.get(0).getFirst());
-        assertEquals("id1", top3.get(1).getFirst());
-        assertEquals("id4", top3.get(2).getFirst());
+        assertEquals("id9", top3.get(0).getFirst());
+        assertEquals("id4", top3.get(1).getFirst());
+        assertEquals("id1", top3.get(2).getFirst());
     }
 }

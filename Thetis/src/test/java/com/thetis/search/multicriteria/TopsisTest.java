@@ -21,7 +21,7 @@ public class TopsisTest
                 e7 = new CombinedRanking.Entry("id7", List.of(0.9, 20.3, 13.4)),
                 e8 = new CombinedRanking.Entry("id8", List.of(8.7, 9.1, 14.2)),
                 e9 = new CombinedRanking.Entry("id9", List.of(2.7, 25.3, 18.9));
-        Topsis t = new Topsis();
+        Topsis t = new Topsis(List.of(0.5, 0.2, 0.3));
         CombinedRanking preRanking = new CombinedRanking(e1, e2, e3, e4, e5, e6, e7, e8, e9),
                 postRanking = t.rank(preRanking);
         List<CombinedRanking.Entry> top3 = new ArrayList<>(3);
@@ -37,8 +37,8 @@ public class TopsisTest
             }
         }
 
-        assertEquals("id6", top3.get(0).id());
-        assertEquals("id9", top3.get(1).id());
-        assertEquals("id7", top3.get(2).id());
+        assertEquals("id5", top3.get(0).id());
+        assertEquals("id4", top3.get(1).id());
+        assertEquals("id2", top3.get(2).id());
     }
 }
