@@ -5,8 +5,6 @@ import com.thetis.store.EntityLinking;
 import com.thetis.store.EntityTable;
 import com.thetis.store.EntityTableLink;
 import com.thetis.store.hnsw.HNSW;
-import com.thetis.store.lsh.SetLSHIndex;
-import com.thetis.store.lsh.VectorLSHIndex;
 import com.thetis.structures.Id;
 import com.thetis.structures.Pair;
 import com.thetis.structures.table.DynamicTable;
@@ -22,7 +20,7 @@ public class Prefilter extends AbstractSearch
 {
     private long elapsed = -1;
     private HNSW hnsw;
-    private BM25 bm25;
+    private LuceneSearch lucene;
     private static final int SIZE_THRESHOLD = 8;
     private static final int SPLITS_SIZE = 3;
     private static final int MIN_EXISTS_IN = 2;
@@ -37,15 +35,15 @@ public class Prefilter extends AbstractSearch
     {
         this(linker, entityTable, entityTableLink, embeddingsIndex);
         this.hnsw = hnsw;
-        this.bm25 = null;
+        this.lucene = null;
     }
 
     public Prefilter(EntityLinking linker, EntityTable entityTable, EntityTableLink entityTableLink,
-                     EmbeddingsIndex<Id> embeddingsIndex, BM25 bm25)
+                     EmbeddingsIndex<Id> embeddingsIndex, LuceneSearch lucene)
     {
         this(linker, entityTable, entityTableLink, embeddingsIndex);
         this.hnsw = null;
-        this.bm25 = bm25;
+        this.lucene = lucene;
     }
 
     @Override
@@ -109,15 +107,7 @@ public class Prefilter extends AbstractSearch
                 }
             }
 
-            if (this.bm25 != null)
-            {
-                candidates.addAll(searchBM25(entities));
-            }
-
-            else
-            {
-                candidates.addAll(searchHNSW(entities));
-            }
+            candidates.addAll(this.lucene != null ? searchLucene(entities) : searchHNSW(entities));
         }
 
         return candidates;
@@ -155,10 +145,10 @@ public class Prefilter extends AbstractSearch
         return tables;
     }
 
-    private Set<String> searchBM25(Set<String> entities)
+    private Set<String> searchLucene(Set<String> entities)
     {
         Table<String> query = new DynamicTable<>(List.of(new ArrayList<>(entities)));
-        Result result = this.bm25.search(query);
+        Result result = this.lucene.search(query);
         Iterator<Pair<String, Double>> resultIter = result.getResults();
         Set<String> resultSet = new HashSet<>();
 

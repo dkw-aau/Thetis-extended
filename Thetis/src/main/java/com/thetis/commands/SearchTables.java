@@ -108,7 +108,7 @@ public class SearchTables extends Command {
         }
     }
 
-    private enum PrefilterTechnique {HNSW, BM25}
+    private enum PrefilterTechnique {HNSW, LUCENE}
 
     @CommandLine.Option(names = { "-sm", "--search-mode" }, description = "Must be one of {exact, analogous, lucene, combined}", required = true)
     private SearchMode searchMode = null;
@@ -238,7 +238,7 @@ public class SearchTables extends Command {
     @CommandLine.Option(names = {"-t", "--threads"}, description = "Number of threads", required = true, defaultValue = "1")
     private int threads;
 
-    @CommandLine.Option(names = {"-pf", "--pre-filter"}, description = "Pre-filtering technique to reduce search space (HNSW, BM25)")
+    @CommandLine.Option(names = {"-pf", "--pre-filter"}, description = "Pre-filtering technique to reduce search space (HNSW, LUCENE)")
     private PrefilterTechnique prefilterTechnique = null;
 
     @Override
@@ -274,14 +274,14 @@ public class SearchTables extends Command {
             EmbeddingsIndex<Id> embeddingsIdx = indexReader.getEmbeddingsIndex();
             HNSW hnsw = indexReader.getHnsw();
             LuceneIndex lucene = indexReader.getLuceneIndex();
-            BM25 bm25 = new BM25(linker, entityTable, entityTableLink, embeddingsIdx);
+            LuceneSearch keywordSearch = new LuceneSearch(lucene, this.topK);
             Prefilter prefilter = null;
 
             if (this.prefilterTechnique != null)
             {
                 prefilter = switch (this.prefilterTechnique) {
                     case HNSW -> new Prefilter(linker, entityTable, entityTableLink, embeddingsIdx, hnsw);
-                    case BM25 -> new Prefilter(linker, entityTable, entityTableLink, embeddingsIdx, bm25);
+                    case LUCENE -> new Prefilter(linker, entityTable, entityTableLink, embeddingsIdx, keywordSearch);
                     default -> null;
                 };
             }
