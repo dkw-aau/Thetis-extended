@@ -50,7 +50,7 @@ public class Pareto extends RankingCombiner
 
     private boolean dominates(CombinedRanking.Entry dominator, CombinedRanking.Entry dominated)
     {
-        boolean dominatesAll = true, containsStrictlyGreater = false;
+        boolean containsStrictlyGreater = false;
         int scores = dominator.scores().size();
 
         if (scores != dominated.scores().size())
@@ -67,18 +67,17 @@ public class Pareto extends RankingCombiner
                 throw new RuntimeException("Scores must be within [0, 1]");
             }
 
-            else if (dominatorScore < dominatedScore)
+            else if (dominatorScore + 0.05 < dominatedScore)   // Added magic number such that near-equality is treated as equality
             {
-                dominatesAll = false;
-                break;
+                return false;
             }
 
-            else if (dominatorScore > dominatedScore)
+            else if (dominatorScore > dominatedScore + 0.05)    // Added magic number such that near-equality is treated as equality
             {
                 containsStrictlyGreater = true;
             }
         }
 
-        return dominatesAll && containsStrictlyGreater;
+        return containsStrictlyGreater;
     }
 }
