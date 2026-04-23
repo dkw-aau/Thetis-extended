@@ -50,6 +50,14 @@ public class Prefilter extends AbstractSearch
     protected Result abstractSearch(Table<String> query)
     {
         long start = System.nanoTime();
+
+        if (this.lucene != null)
+        {
+            Result result = this.lucene.search(query);
+            this.elapsed = System.nanoTime() - start;
+            return result;
+        }
+
         List<Pair<String, Double>> candidates = new ArrayList<>();
         List<Table<String>> subQueries = List.of(query);
         Map<String, Integer> tableCounter = new HashMap<>();
