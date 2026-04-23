@@ -33,6 +33,7 @@ public class LuceneIndex implements Index<String, Result>, AutoCloseable
     private final boolean applyNormalization;
     static final String DOC_FIELD = "text";
     static final String ID_FIELD = "id";
+    private double maxScore = 0;
 
     public LuceneIndex(String directory, int k, boolean normalizeScores) throws IOException
     {
@@ -100,9 +101,11 @@ public class LuceneIndex implements Index<String, Result>, AutoCloseable
                 }
             }
 
+            this.maxScore = Math.max(this.maxScore, max);
+
             if (this.applyNormalization)
             {
-                ranking = normalizeResults(ranking, max);
+                ranking = normalizeResults(ranking, this.maxScore);
             }
 
             return new Result(this.k, ranking);
