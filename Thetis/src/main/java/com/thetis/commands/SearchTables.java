@@ -600,7 +600,8 @@ public class SearchTables extends Command {
     {
         AnalogousSearch semanticSearch = initAnalogousSearch(linker, table, tableLink, embeddingIdx, prefilter, tableDir);
         LuceneSearch keywordSearch = new LuceneSearch(lucene, this.topK);
-        CombinerPipeline pipeline = MultiSearch.createPipeline(new Pareto(), new Topsis(List.of(0.25, 0.75)));
+        //CombinerPipeline pipeline = MultiSearch.createPipeline(new Pareto(), new Topsis(List.of(0.25, 0.75)));
+        CombinerPipeline pipeline = MultiSearch.createPipeline(new Pareto());
         MultiSearch combinedSearch = new MultiSearch(pipeline, semanticSearch, keywordSearch);
         Result results = combinedSearch.search(query);
         List<Pair<String, Double>> scores = new ArrayList<>(this.topK);
