@@ -274,7 +274,7 @@ public class SearchTables extends Command {
             EmbeddingsIndex<Id> embeddingsIdx = indexReader.getEmbeddingsIndex();
             HNSW hnsw = indexReader.getHnsw();
             LuceneIndex lucene = indexReader.getLuceneIndex();
-            LuceneSearch keywordSearch = new LuceneSearch(lucene, this.topK);
+            LuceneSearch keywordSearch = new LuceneSearch(lucene, Objects.requireNonNull(this.tableDir.listFiles()).length);
             Prefilter prefilter = null;
 
             if (this.prefilterTechnique != null)

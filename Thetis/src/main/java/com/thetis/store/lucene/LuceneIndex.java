@@ -15,7 +15,9 @@ import org.apache.lucene.store.FSDirectory;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -86,13 +88,19 @@ public class LuceneIndex implements Index<String, Result>, AutoCloseable
             Query query = this.parser.parse(keywordQuery);
             TopDocs topDocs = this.searcher.search(query, this.k);
             List<Pair<String, Double>> ranking = new ArrayList<>();
+            Set<String> returnedTables = new HashSet<>();
             double max = Double.MIN_VALUE;
 
             for (ScoreDoc scoreDoc : topDocs.scoreDocs)
             {
                 double score = scoreDoc.score;
                 String tableId = this.searcher.doc(scoreDoc.doc).get(ID_FIELD);
-                ranking.add(new Pair<>(tableId, score));
+
+                if (!returnedTables.contains(tableId))
+                {
+                    ranking.add(new Pair<>(tableId, score));
+                    returnedTables.add(tableId);
+                }
 
                 if (score > max)
                 {
