@@ -67,12 +67,12 @@ public class Pareto extends RankingCombiner
                 throw new RuntimeException("Scores must be within [0, 1]");
             }
 
-            else if (dominatorScore + 0.05 < dominatedScore)   // Added magic number such that near-equality is treated as equality
+            else if (dominatorScore + 0.1 < dominatedScore)   // Added magic number such that near-equality is treated as equality
             {
                 return false;
             }
 
-            else if (dominatorScore > dominatedScore + 0.05)    // Added magic number such that near-equality is treated as equality
+            else if (dominatorScore > dominatedScore + 0.1)    // Added magic number such that near-equality is treated as equality
             {
                 containsStrictlyGreater = true;
             }
