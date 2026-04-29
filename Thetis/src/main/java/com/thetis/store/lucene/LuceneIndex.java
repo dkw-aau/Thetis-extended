@@ -9,6 +9,7 @@ import org.apache.lucene.index.*;
 import org.apache.lucene.queryparser.classic.ParseException;
 import org.apache.lucene.queryparser.classic.QueryParser;
 import org.apache.lucene.search.*;
+import org.apache.lucene.search.similarities.BM25Similarity;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 
@@ -18,7 +19,6 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 /**
  * Index to perform keyword search using Lucene.
@@ -45,6 +45,7 @@ public class LuceneIndex implements Index<String, Result>, AutoCloseable
         this.parser = new QueryParser(DOC_FIELD, this.analyzer);
         this.k = k;
         this.applyNormalization = normalizeScores;
+        this.searcher.setSimilarity(new BM25Similarity());
     }
 
     public static LuceneBuilder builder(String indexDir) throws IOException
