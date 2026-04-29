@@ -312,6 +312,16 @@ public class IndexWriter implements IndexIO
             {
                 for (JsonTable.TableCell cell : tableRow)
                 {
+                    if (!cell.links.isEmpty())
+                    {
+                        String link = cell.links.get(0), postfix = link.substring(link.lastIndexOf('/') + 1);
+
+                        for (String token : postfix.split("_"))
+                        {
+                            documentBuilder.append(token).append(" ");
+                        }
+                    }
+
                     if (!cell.text.isEmpty())
                     {
                         documentBuilder.append(cell.text).append(" ");
