@@ -4,7 +4,9 @@ import com.thetis.search.Result;
 import com.thetis.store.Index;
 import com.thetis.structures.Pair;
 import org.apache.lucene.analysis.Analyzer;
+import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
+import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.index.*;
 import org.apache.lucene.queryparser.classic.ParseException;
 import org.apache.lucene.queryparser.classic.QueryParser;
@@ -86,7 +88,17 @@ public class LuceneIndex implements Index<String, Result>, AutoCloseable
     {
         try
         {
-            Query query = this.parser.parse(keywordQuery);
+            List<String> tokens = tokenize(keywordQuery);
+            BooleanQuery.Builder queryBuilder = new BooleanQuery.Builder();
+
+            for (String token : tokens)
+            {
+                Term term = new Term(DOC_FIELD, token);
+                Query query = new FuzzyQuery(term);
+                queryBuilder.add(query, BooleanClause.Occur.SHOULD);
+            }
+
+            Query query = queryBuilder.build();
             TopDocs topDocs = this.searcher.search(query, this.k);
             List<Pair<String, Double>> ranking = new ArrayList<>();
             Set<String> returnedTables = new HashSet<>();
@@ -117,10 +129,26 @@ public class LuceneIndex implements Index<String, Result>, AutoCloseable
             return new Result(this.k, ranking);
         }
 
-        catch (IOException | ParseException e)
+        catch (IOException e)
         {
             throw new RuntimeException(e);
         }
+    }
+
+    private List<String> tokenize(String str) throws IOException
+    {
+        List<String> tokens = new ArrayList<>();
+        TokenStream tokenStream = this.analyzer.tokenStream(null, str);
+        CharTermAttribute attribute = tokenStream.addAttribute(CharTermAttribute.class);
+        tokenStream.reset();
+
+        while (tokenStream.incrementToken())
+        {
+            tokens.add(attribute.toString());
+        }
+
+        tokenStream.close();
+        return tokens;
     }
 
     private static List<Pair<String, Double>> normalizeResults(List<Pair<String, Double>> results, double maxScore)
