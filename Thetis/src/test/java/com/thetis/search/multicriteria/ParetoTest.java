@@ -28,7 +28,7 @@ public class ParetoTest
         assertTrue(postRanking instanceof ChunkedCombinedRanking);
 
         ChunkedCombinedRanking chunkedPostRanking = (ChunkedCombinedRanking) postRanking;
-        assertEquals(3, chunkedPostRanking.chunks());
+        assertEquals(4, chunkedPostRanking.chunks());
         assertEquals(9, chunkedPostRanking.size());
         assertEquals(1, chunkedPostRanking.getChunk(0).size());
 

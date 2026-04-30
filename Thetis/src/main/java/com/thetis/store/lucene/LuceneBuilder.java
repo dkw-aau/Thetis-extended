@@ -1,7 +1,12 @@
 package com.thetis.store.lucene;
 
+import co.elastic.clients.elasticsearch._types.analysis.StopAnalyzer;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.standard.StandardAnalyzer;
+import org.apache.lucene.analysis.StopFilter;
+import org.apache.lucene.analysis.TokenStream;
+import org.apache.lucene.analysis.en.EnglishAnalyzer;
+import org.apache.lucene.analysis.en.PorterStemFilter;
+import org.apache.lucene.analysis.standard.StandardTokenizer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.TextField;
@@ -25,9 +30,24 @@ public class LuceneBuilder implements AutoCloseable
     {
         this.path = dir;
         this.dir = FSDirectory.open(Path.of(dir));
-        this.analyzer = new StandardAnalyzer();
+        this.analyzer = getAnalyzer();
         this.config = new IndexWriterConfig(this.analyzer);
         this.writer = new IndexWriter(this.dir, this.config);
+    }
+
+    public static Analyzer getAnalyzer()
+    {
+        return new Analyzer() {
+            @Override
+            protected TokenStreamComponents createComponents(String s)
+            {
+                StandardTokenizer tokenizer = new StandardTokenizer();
+                TokenStream stream = tokenizer;
+                stream = new StopFilter(stream, EnglishAnalyzer.ENGLISH_STOP_WORDS_SET);
+                stream = new PorterStemFilter(stream);
+                return new Analyzer.TokenStreamComponents(tokenizer, stream);
+            }
+        };
     }
 
     public <D> void addDocument(LuceneDocument<D> document) throws IOException

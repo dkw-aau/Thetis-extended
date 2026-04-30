@@ -159,6 +159,13 @@
     </dependency>
 
     <dependency>
+      <groupId>org.apache.lucene</groupId>
+      <artifactId>lucene-analysis-common</artifactId>
+      <version>9.5.0</version>
+      <scope>compile</scope>
+    </dependency>
+
+    <dependency>
       <groupId>com.stepstone.search.hnswlib.jna</groupId>
       <artifactId>hnswlib-jna</artifactId>
       <version>1.4.2</version>

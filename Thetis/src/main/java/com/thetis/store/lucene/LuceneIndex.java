@@ -5,7 +5,6 @@ import com.thetis.store.Index;
 import com.thetis.structures.Pair;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
-import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.index.*;
 import org.apache.lucene.queryparser.classic.ParseException;
@@ -41,7 +40,7 @@ public class LuceneIndex implements Index<String, Result>, AutoCloseable
     public LuceneIndex(String directory, int k, boolean normalizeScores) throws IOException
     {
         this.dir = FSDirectory.open(Path.of(directory));
-        this.analyzer = new StandardAnalyzer();
+        this.analyzer = LuceneBuilder.getAnalyzer();
         this.reader = DirectoryReader.open(this.dir);
         this.searcher = new IndexSearcher(this.reader);
         this.parser = new QueryParser(DOC_FIELD, this.analyzer);
