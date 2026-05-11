@@ -141,6 +141,12 @@ The results can now be found in `data/output/`.
 
 #### BM25 Keyword Search
 Enter the `bm25/` directory.
+Install all necessary Python packages
+
+```bash
+pip install -r requirements.txt
+```
+
 Construct a single JSON file for all WikiTables
 
 ```bash
@@ -154,16 +160,18 @@ Start an Elasticsearch instance
 docker-compose up -d
 ```
 
-Run the indexer
-
-```bash
-python indexer.py --index_name wikitables --input_json tables/tables.json
-```
-
 Get the IP address of the Elasticsearch instance
 
 ```bash
 docker exec elasticsearch_bm25 hostname -I
+```
+
+Open the file `bm25/elastic.py` and change the `host` value to the retrieved IP address.
+
+Run the indexer
+
+```bash
+docker exec elasticsearch_bm25 python3 indexer.py --index_name wikitables --input_json /tables/tables.json
 ```
 
 You can now search using the previous Thetis search command, but substituting the `--search-mode` flag with `keyword`, and add the options `--bm25-host` using the retrieved IP address of the Elasticsearch instance and `--bm25-index-name` using the BM25 index `wikitables`.

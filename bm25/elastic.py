@@ -22,8 +22,6 @@ ES_config = {
     "localhost:9200"
   ],
   "settings": {
-    "number_of_shards": 1,
-    "number_of_replicas": 0
   }
 }
 ELASTIC_HOSTS = ES_config.get("hosts")
@@ -185,8 +183,7 @@ class Elastic(object):
         # sets the global index settings
         # number of shards should be always set to 1; otherwise the stats would not be correct
         body["settings"] = {"analysis": self.__gen_analyzers(),
-                            "index": {"number_of_shards": 1,
-                                      "number_of_replicas": 0},
+                            "index": {},
                             }
 
         # sets similarity function
@@ -198,7 +195,7 @@ class Elastic(object):
             mapping["similarity"] = sim
 
         # sets the field mappings
-        body["mappings"] = {self.DOC_TYPE: {"properties": mappings}}
+        #body["mappings"] = {self.DOC_TYPE: {"properties": mappings}}
 
         # creates the index
         self.__es.indices.create(index=self.__index_name, body=body)

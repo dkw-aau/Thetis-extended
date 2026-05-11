@@ -10,6 +10,9 @@ RUN apt install python3.8 pip -y
 RUN apt-get install python3.8-distutils --reinstall -y
 RUN apt-get install curl tar net-tools nano htop wget openjdk-11-jdk -y
 
+COPY requirements.txt .
+RUN pip3 install -r requirements.txt
+
 RUN useradd -ms /bin/bash ubuntu
 USER ubuntu
 
@@ -20,6 +23,6 @@ RUN wget https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-7.17
 RUN tar -xf elasticsearch-7.17.8-linux-x86_64.tar.gz
 RUN rm elasticsearch-7.17.8-linux-x86_64.tar.gz
 
-COPY ./ ./
+COPY *.py ./
 
-ENTRYPOINT ['./elasticsearch-7.17.8/bin/elasticsearch']
+ENTRYPOINT ./elasticsearch-7.17.8/bin/elasticsearch
