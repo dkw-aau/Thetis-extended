@@ -58,7 +58,7 @@ public class SearchTables extends Command {
     CommandLine.Model.CommandSpec spec; // injected by picocli
 
     private enum SearchMode {
-        EXACT("exact"), ANALOGOUS("analogous"), PPR("ppr"), LUCENE("lucene"), COMBINED("combined");
+        EXACT("exact"), ANALOGOUS("analogous"), PPR("ppr"), KEYWORD("keyword"), COMBINED("combined");
 
         private final String mode;
         SearchMode(String mode){
@@ -110,7 +110,7 @@ public class SearchTables extends Command {
 
     private enum PrefilterTechnique {HNSW, LUCENE}
 
-    @CommandLine.Option(names = { "-sm", "--search-mode" }, description = "Must be one of {exact, analogous, lucene, combined}", required = true)
+    @CommandLine.Option(names = { "-sm", "--search-mode" }, description = "Must be one of {exact, analogous, keyword, combined}", required = true)
     private SearchMode searchMode = null;
 
     @CommandLine.Option(names = { "-scpqe", "--singleColumnPerQueryEntity"}, description = "If specified, each query tuple will be evaluated against only one entity")
@@ -241,6 +241,12 @@ public class SearchTables extends Command {
     @CommandLine.Option(names = {"-pf", "--pre-filter"}, description = "Pre-filtering technique to reduce search space (HNSW, LUCENE)")
     private PrefilterTechnique prefilterTechnique = null;
 
+    @CommandLine.Option(names = {"-kh", "--bm25-host"}, description = "Host of Elasticsearch instance supporting BM25 search")
+    private String elasticSearchHost = null;
+
+    @CommandLine.Option(names = {"-kin", "--bm25-index-name"}, description = "Index name for BM25 search in Elasticsearch")
+    private String bm25IndexName = null;
+
     @Override
     public Integer call()
     {
@@ -253,6 +259,13 @@ public class SearchTables extends Command {
         // Create output directory if it doesn't exist
         if (!this.outputDir.exists())
             this.outputDir.mkdirs();
+
+        if ((this.searchMode == SearchMode.KEYWORD || this.searchMode == SearchMode.COMBINED) &&
+                (this.elasticSearchHost == null || this.bm25IndexName == null))
+        {
+            Logger.logNewLine(Logger.Level.ERROR, "Missing Elasticsearch host name of BM25 index name");
+            return -1;
+        }
 
         try
         {
@@ -273,6 +286,7 @@ public class SearchTables extends Command {
             EntityTableLink entityTableLink = indexReader.getEntityTableLink();
             EmbeddingsIndex<Id> embeddingsIdx = indexReader.getEmbeddingsIndex();
             HNSW hnsw = indexReader.getHnsw();
+            BM25 bm25 = new BM25(this.elasticSearchHost, this.bm25IndexName, true, this.topK);
             LuceneIndex lucene = indexReader.getLuceneIndex();
             LuceneSearch keywordSearch = new LuceneSearch(lucene, Objects.requireNonNull(this.tableDir.listFiles()).length);
             Prefilter prefilter = null;
@@ -326,12 +340,12 @@ public class SearchTables extends Command {
                         ppr(queryTable, queryName, linker, entityTable, entityTableLink, embeddingsIdx);
                         break;
 
-                    case LUCENE:
-                        luceneSearch(queryTable, queryName, lucene, entityTableLink.getDirectory());
+                    case KEYWORD:
+                        bm25Search(bm25, queryTable, queryName, entityTableLink.getDirectory());
                         break;
 
                     case COMBINED:
-                        combinedSearch(queryTable, queryName, lucene, linker, entityTable, entityTableLink, embeddingsIdx, prefilter, this.tableDir.toPath());
+                        combinedSearch(queryTable, queryName, bm25, linker, entityTable, entityTableLink, embeddingsIdx, prefilter, this.tableDir.toPath());
                         break;
                 }
             }
@@ -577,10 +591,9 @@ public class SearchTables extends Command {
         return 1;
     }
 
-    public void luceneSearch(Table<String> query, String queryName, LuceneIndex index, String tableDir)
+    public void bm25Search(BM25 bm25, Table<String> query, String queryName, String tableDir)
     {
-        LuceneSearch search = new LuceneSearch(index, this.topK);
-        Iterator<Pair<String, Double>> results = search.search(query).getResults();
+        Iterator<Pair<String, Double>> results = bm25.search(query).getResults();
         List<Pair<String, Double>> scores = new ArrayList<>(this.topK);
         Logger.logNewLine(Logger.Level.RESULT, "\nTop-" + this.topK + " tables are:");
 
@@ -591,18 +604,17 @@ public class SearchTables extends Command {
             Logger.logNewLine(Logger.Level.RESULT, "Filename = " + result.getFirst() + ", score = " + result.getSecond());
         }
 
-        saveFilenameScores(this.outputDir, tableDir, queryName, scores, new HashMap<>(), Set.of(), search.elapsedNanoSeconds(),
+        saveFilenameScores(this.outputDir, tableDir, queryName, scores, new HashMap<>(), Set.of(), bm25.elapsedNanoSeconds(),
                 -1, -1, -1, -1, 0.0);
     }
 
-    public void combinedSearch(Table<String> query, String queryName, LuceneIndex lucene, EntityLinking linker, EntityTable table,
+    public void combinedSearch(Table<String> query, String queryName, BM25 bm25, EntityLinking linker, EntityTable table,
                                EntityTableLink tableLink, EmbeddingsIndex<Id> embeddingIdx, Prefilter prefilter, Path tableDir) throws IOException
     {
         AnalogousSearch semanticSearch = initAnalogousSearch(linker, table, tableLink, embeddingIdx, prefilter, tableDir);
-        LuceneSearch keywordSearch = new LuceneSearch(lucene, this.topK);
         //CombinerPipeline pipeline = MultiSearch.createPipeline(new Pareto(), new Topsis(List.of(0.25, 0.75)));
         CombinerPipeline pipeline = MultiSearch.createPipeline(new Topsis(List.of(0.25, 0.75)));
-        MultiSearch combinedSearch = new MultiSearch(pipeline, semanticSearch, keywordSearch);
+        MultiSearch combinedSearch = new MultiSearch(pipeline, semanticSearch, bm25);
         Result results = combinedSearch.search(query);
         List<Pair<String, Double>> scores = new ArrayList<>(this.topK);
         Logger.logNewLine(Logger.Level.RESULT, "\nTop-" + this.topK + " tables are:");

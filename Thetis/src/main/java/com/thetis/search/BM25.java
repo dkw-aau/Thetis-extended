@@ -24,57 +24,102 @@ import java.util.List;
 public class BM25 extends AbstractSearch
 {
     private long elapsedNs = -1;
+    private final String host;
+    private final String indexName;
+    private final boolean normalizeResults;
+    private int k;
 
-    public BM25(EntityLinking linker, EntityTable entityTable, EntityTableLink entityTableLink,
-                EmbeddingsIndex<Id> embeddingIdx)
+    public BM25(String elasticsearchHost, String indexName, boolean normalizeResults, int k)
     {
-        super(linker, entityTable, entityTableLink, embeddingIdx);
+        super(null, null, null, null);
+        this.host = elasticsearchHost;
+        this.indexName = indexName;
+        this.normalizeResults = normalizeResults;
+        this.k = k;
+    }
+
+    public void setK(int k)
+    {
+        this.k = k;
     }
 
     @Override
     protected Result abstractSearch(Table<String> query)
     {
         long start = System.nanoTime();
-        int queryRows = query.rowCount();
 
-        try (RestClient restClient = RestClient.builder(new HttpHost("localhost", 9200)).build())
+        try (RestClient restClient = RestClient.builder(new HttpHost(this.host, 9200)).build())
         {
+            double maxScore = -1.0;
             List<Pair<String, Double>> results = new ArrayList<>();
             ElasticsearchTransport transport = new RestClientTransport(restClient, new JacksonJsonpMapper());
             ElasticsearchClient client = new ElasticsearchClient(transport);
+            String keywordQuery = convertQuery(query);
+            SearchResponse<JsonData> search = client.search(s -> s
+                    .index(this.indexName)
+                    .query(q -> q
+                            .match(t -> t
+                                    .field("content")
+                                    .query(keywordQuery))), JsonData.class);
 
-            for (int row = 0; row < queryRows; row++)
+            for (Hit<JsonData> hit : search.hits().hits())
             {
-                int queryColumns = query.getRow(row).size();
+                String tableId = hit.id();
+                double score = hit.score();
+                results.add(new Pair<>(tableId, score));
 
-                for (int column = 0; column < queryColumns; column++)
+                if (score > maxScore)
                 {
-                    String uri = query.getRow(row).get(column);
-                    String entity = uri.substring(uri.lastIndexOf("/") + 1).replace("_", " ");
-                    SearchResponse<JsonData> search = client.search(s -> s
-                            .index("bm25")
-                            .query(q -> q
-                                    .match(t -> t
-                                            .field("content")
-                                            .query(entity))), JsonData.class);
-
-                    for (Hit<JsonData> hit : search.hits().hits())
-                    {
-                        String table = hit.id();
-                        double score = hit.score();
-                        results.add(new Pair<>(table, score));
-                    }
+                    maxScore = score;
                 }
             }
 
+            if (this.normalizeResults)
+            {
+                results = normalizeResults(results, maxScore);
+            }
+
             this.elapsedNs = System.nanoTime() - start;
-            return new Result(results.size(), results);
+            return new Result(this.k, results);
         }
 
         catch (IOException e)
         {
             return new Result(-1, List.of());
         }
+    }
+
+    private static String convertQuery(Table<String> query)
+    {
+        StringBuilder queryBuilder = new StringBuilder();
+        int rows = query.rowCount();
+
+        for (int row = 0; row < rows; row++)
+        {
+            int columns = query.getRow(row).size();
+
+            for (int column = 0; column < columns; column++)
+            {
+                String[] textTokens = query.getRow(row).get(column).split("/");
+                String text = textTokens[textTokens.length - 1].replace("_", " ");
+                queryBuilder.append(text).append(" ");
+            }
+        }
+
+        return queryBuilder.toString();
+    }
+
+    private static List<Pair<String, Double>> normalizeResults(List<Pair<String, Double>> results, double maxScore)
+    {
+        List<Pair<String, Double>> normalized = new ArrayList<>(results.size());
+
+        for (Pair<String, Double> result : results)
+        {
+            double normalizedScore = Math.log(1 + result.getSecond()) / Math.log(1 + maxScore);
+            normalized.add(new Pair<>(result.getFirst(), normalizedScore));
+        }
+
+        return normalized;
     }
 
     @Override
