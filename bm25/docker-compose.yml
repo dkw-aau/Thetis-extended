@@ -1,0 +1,13 @@
+version: "3"
+
+services:
+  elastic:
+    network_mode: host
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    volumes:
+      - ./../data/:/data
+      - ./tables/:/tables
+    container_name: elasticsearch_bm25

@@ -139,8 +139,32 @@ Available values for this flag are `LSH_TYPES`, `LSH_PREDICATES`, and `LSH_EMBED
 
 The results can now be found in `data/output/`.
 
-#### Keyword Search
+#### BM25 Keyword Search
+Enter the `bm25/` directory.
+Construct a single JSON file for all WikiTables
 
-We also allow performing keyword search using the query table entities as keywords.
-Similar to the previous search command, exchange the value for the `--search-mode` flag with `lucene` to perform keyword search.
+```bash
+python json_converter.py --input_dir ../data/SemanticTableSearchDataset/table_corpus/tables_2013/ --output_dir tables/ \
+    --table_id_to_entities_path ../data/index/wikitables/tableIDToEntities.ttl
+```
+
+Start an Elasticsearch instance
+
+```bash
+docker-compose up -d
+```
+
+Run the indexer
+
+```bash
+python indexer.py --index_name wikitables --input_json tables/tables.json
+```
+
+Get the IP address of the Elasticsearch instance
+
+```bash
+docker exec elasticsearch_bm25 hostname -I
+```
+
+You can now search using the previous Thetis search command, but substituting the `--search-mode` flag with `keyword`, and add the options `--bm25-host` using the retrieved IP address of the Elasticsearch instance and `--bm25-index-name` using the BM25 index `wikitables`.
 We recommend not using prefiltering with the `-pf` flag when performing this type of search.
