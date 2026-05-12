@@ -43,6 +43,7 @@ public class BM25 extends AbstractSearch
 
         try (RestClient restClient = RestClient.builder(new HttpHost("localhost", 9200)).build())
         {
+            double maxScore = -1.0;
             List<Pair<String, Double>> results = new ArrayList<>();
             ElasticsearchTransport transport = new RestClientTransport(restClient, new JacksonJsonpMapper());
             ElasticsearchClient client = new ElasticsearchClient(transport);
@@ -60,11 +61,16 @@ public class BM25 extends AbstractSearch
                 String tableId = hit.id();
                 double score = hit.score();
                 results.add(new Pair<>(tableId, score));
+
+                if (score > maxScore)
+                {
+                    maxScore = score;
+                }
             }
 
             if (this.normalizeResults)
             {
-                results = normalizeResults(results, search.maxScore());
+                results = normalizeResults(results, maxScore);
             }
 
             this.elapsedNs = System.nanoTime() - start;
