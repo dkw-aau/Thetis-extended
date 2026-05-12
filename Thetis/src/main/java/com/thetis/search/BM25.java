@@ -7,11 +7,6 @@ import co.elastic.clients.json.JsonData;
 import co.elastic.clients.json.jackson.JacksonJsonpMapper;
 import co.elastic.clients.transport.ElasticsearchTransport;
 import co.elastic.clients.transport.rest_client.RestClientTransport;
-import com.thetis.store.EmbeddingsIndex;
-import com.thetis.store.EntityLinking;
-import com.thetis.store.EntityTable;
-import com.thetis.store.EntityTableLink;
-import com.thetis.structures.Id;
 import com.thetis.structures.Pair;
 import com.thetis.structures.table.Table;
 import org.apache.http.HttpHost;
@@ -24,15 +19,13 @@ import java.util.List;
 public class BM25 extends AbstractSearch
 {
     private long elapsedNs = -1;
-    private final String host;
     private final String indexName;
     private final boolean normalizeResults;
     private int k;
 
-    public BM25(String elasticsearchHost, String indexName, boolean normalizeResults, int k)
+    public BM25(String indexName, boolean normalizeResults, int k)
     {
         super(null, null, null, null);
-        this.host = elasticsearchHost;
         this.indexName = indexName;
         this.normalizeResults = normalizeResults;
         this.k = k;
@@ -48,15 +41,15 @@ public class BM25 extends AbstractSearch
     {
         long start = System.nanoTime();
 
-        try (RestClient restClient = RestClient.builder(new HttpHost(this.host, 9200)).build())
+        try (RestClient restClient = RestClient.builder(new HttpHost("localhost", 9200)).build())
         {
-            double maxScore = -1.0;
             List<Pair<String, Double>> results = new ArrayList<>();
             ElasticsearchTransport transport = new RestClientTransport(restClient, new JacksonJsonpMapper());
             ElasticsearchClient client = new ElasticsearchClient(transport);
             String keywordQuery = convertQuery(query);
             SearchResponse<JsonData> search = client.search(s -> s
                     .index(this.indexName)
+                    .size(this.k)
                     .query(q -> q
                             .match(t -> t
                                     .field("content")
@@ -67,16 +60,11 @@ public class BM25 extends AbstractSearch
                 String tableId = hit.id();
                 double score = hit.score();
                 results.add(new Pair<>(tableId, score));
-
-                if (score > maxScore)
-                {
-                    maxScore = score;
-                }
             }
 
             if (this.normalizeResults)
             {
-                results = normalizeResults(results, maxScore);
+                results = normalizeResults(results, search.maxScore());
             }
 
             this.elapsedNs = System.nanoTime() - start;

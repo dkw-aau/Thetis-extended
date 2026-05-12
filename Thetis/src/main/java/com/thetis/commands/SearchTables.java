@@ -241,9 +241,6 @@ public class SearchTables extends Command {
     @CommandLine.Option(names = {"-pf", "--pre-filter"}, description = "Pre-filtering technique to reduce search space (HNSW, LUCENE)")
     private PrefilterTechnique prefilterTechnique = null;
 
-    @CommandLine.Option(names = {"-kh", "--bm25-host"}, description = "Host of Elasticsearch instance supporting BM25 search")
-    private String elasticSearchHost = null;
-
     @CommandLine.Option(names = {"-kin", "--bm25-index-name"}, description = "Index name for BM25 search in Elasticsearch")
     private String bm25IndexName = null;
 
@@ -261,9 +258,9 @@ public class SearchTables extends Command {
             this.outputDir.mkdirs();
 
         if ((this.searchMode == SearchMode.KEYWORD || this.searchMode == SearchMode.COMBINED) &&
-                (this.elasticSearchHost == null || this.bm25IndexName == null))
+                this.bm25IndexName == null)
         {
-            Logger.logNewLine(Logger.Level.ERROR, "Missing Elasticsearch host name of BM25 index name");
+            Logger.logNewLine(Logger.Level.ERROR, "Missing Elasticsearch index name");
             return -1;
         }
 
@@ -286,7 +283,7 @@ public class SearchTables extends Command {
             EntityTableLink entityTableLink = indexReader.getEntityTableLink();
             EmbeddingsIndex<Id> embeddingsIdx = indexReader.getEmbeddingsIndex();
             HNSW hnsw = indexReader.getHnsw();
-            BM25 bm25 = new BM25(this.elasticSearchHost, this.bm25IndexName, true, this.topK);
+            BM25 bm25 = new BM25(this.bm25IndexName, true, this.topK);
             LuceneIndex lucene = indexReader.getLuceneIndex();
             LuceneSearch keywordSearch = new LuceneSearch(lucene, Objects.requireNonNull(this.tableDir.listFiles()).length);
             Prefilter prefilter = null;
