@@ -2,8 +2,6 @@ package com.thetis.commands.parser;
 
 import com.google.common.reflect.TypeToken;
 import com.google.gson.Gson;
-import com.google.gson.TypeAdapter;
-import com.google.gson.stream.JsonReader;
 import com.thetis.tables.JsonTable;
 import com.thetis.structures.table.DynamicTable;
 import com.thetis.structures.table.Table;
@@ -28,7 +26,7 @@ public class TableParser
             Type type = new TypeToken<HashMap<String, List<List<String>>>>(){}.getType();
             Map<String, List<List<String>>> map = gson.fromJson(reader, type);
 
-            if (f.getName().matches(".*\\\\d.*"))
+            if (f.getName().chars().anyMatch(Character::isDigit))
             {
                 StringBuilder numberBuilder = new StringBuilder();
 
