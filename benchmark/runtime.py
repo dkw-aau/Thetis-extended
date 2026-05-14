@@ -1,7 +1,7 @@
 import os
 import json
 
-results_dir = 'output/search_output/'
+results_dir = 'combined_output/search_output/'
 output_ids = os.listdir(results_dir)
 
 for output in output_ids:

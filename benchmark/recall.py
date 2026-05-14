@@ -1,6 +1,7 @@
 import os
 import pickle
 import json
+import operator
 
 def ground_truth(query_filename, ground_truth_folder, pickle_mapping_file):
     query = None
@@ -44,21 +45,22 @@ def recall(predicted, gt):
     return float(count) / len(gt)
 
 k = 100
-#query_files = os.listdir('SemanticTableSearchDataset/queries/2013/1_tuples_per_query/')
-query_files = os.listdir('hnsw_conf_queries/')
+query_files = os.listdir('5-tuple/')
 gt_folder = 'SemanticTableSearchDataset/ground_truth/2013/wikipedia_categories/'
 corpus = 'SemanticTableSearchDataset/table_corpus/tables_2013/'
 mapping = 'SemanticTableSearchDataset/table_corpus/wikipages_df_2013.pickle'
 
 for query_file in query_files:
     gt = ground_truth('SemanticTableSearchDataset/queries/2013/1_tuples_per_query/' + query_file, gt_folder, mapping)
+    relevances = list(sorted(gt[1], key = operator.itemgetter(0), reverse = True))
     gt_tables = []
 
-    for relevance in gt[1]:
+    for relevance in relevances:
         table_file = relevance[1]
         gt_tables.append(table_file)
 
-    score_file = 'output/search_output/' + query_file.replace('.json', '') + '/filenameToScore.json'
+    gt_tables = gt_tables[:k]
+    score_file = 'combined_output/search_output/' + query_file.replace('.json', '') + '/filenameToScore.json'
     predicted_tables = []
 
     with open(score_file, 'r') as handle:

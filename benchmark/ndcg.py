@@ -31,8 +31,7 @@ def ground_truth(query_filename, ground_truth_folder, pickle_mapping_file):
     return query, relevances
 
 k = 100
-#query_files = os.listdir('SemanticTableSearchDataset/queries/2013/1_tuples_per_query/')
-query_files = os.listdir('hnsw_conf_queries/')
+query_files = os.listdir('5-tuple/')
 gt_folder = 'SemanticTableSearchDataset/ground_truth/2013/wikipedia_categories/'
 corpus = 'SemanticTableSearchDataset/table_corpus/tables_2013/'
 mapping = 'SemanticTableSearchDataset/table_corpus/wikipages_df_2013.pickle'
@@ -45,7 +44,7 @@ for query_file in query_files:
         gt_relevance_scores[relevance[1]] = relevance[0]
 
     scores = {table:0 for table in os.listdir(corpus)}
-    score_file = 'output/search_output/' + query_file.replace('.json', '') + '/filenameToScore.json'
+    score_file = 'combined_output/search_output/' + query_file.replace('.json', '') + '/filenameToScore.json'
 
     with open(score_file, 'r') as handle:
         results = json.load(handle)['scores']
