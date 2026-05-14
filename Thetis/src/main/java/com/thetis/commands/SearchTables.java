@@ -244,6 +244,9 @@ public class SearchTables extends Command {
     @CommandLine.Option(names = {"-kin", "--bm25-index-name"}, description = "Index name for BM25 search in Elasticsearch")
     private String bm25IndexName = null;
 
+    @CommandLine.Option(names = {"-qm", "--query-mapping"}, description = "Mapping file from query ID to keyword query")
+    private String queryMappingFile = null;
+
     @Override
     public Integer call()
     {
@@ -283,10 +286,20 @@ public class SearchTables extends Command {
             EntityTableLink entityTableLink = indexReader.getEntityTableLink();
             EmbeddingsIndex<Id> embeddingsIdx = indexReader.getEmbeddingsIndex();
             HNSW hnsw = indexReader.getHnsw();
-            BM25 bm25 = new BM25(this.bm25IndexName, true, this.topK);
             LuceneIndex lucene = indexReader.getLuceneIndex();
             LuceneSearch keywordSearch = new LuceneSearch(lucene, Objects.requireNonNull(this.tableDir.listFiles()).length);
             Prefilter prefilter = null;
+            BM25 bm25;
+
+            if (this.queryMappingFile == null)
+            {
+                bm25 = new BM25(this.bm25IndexName, true, this.topK);
+            }
+
+            else
+            {
+                bm25 = new BM25(this.bm25IndexName, true, this.topK, this.queryMappingFile);
+            }
 
             if (this.prefilterTechnique != null)
             {
