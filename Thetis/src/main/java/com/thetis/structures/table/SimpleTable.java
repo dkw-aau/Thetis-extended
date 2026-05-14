@@ -10,6 +10,7 @@ import java.util.List;
  */
 public class SimpleTable<T> implements Table<T>
 {
+    private String id;
     private List<Row<T>> table;
     private List<String> labels;
 
@@ -27,6 +28,24 @@ public class SimpleTable<T> implements Table<T>
         {
             this.table.add(new Row<T>(row));
         }
+    }
+
+    public SimpleTable(String id, String ... columnLabels)
+    {
+        this(columnLabels);
+        this.id = id;
+    }
+
+    public SimpleTable(String id, List<List<T>> table, String ... columnLabels)
+    {
+        this(table, columnLabels);
+        this.id = id;
+    }
+
+    @Override
+    public String getId()
+    {
+        return this.id;
     }
 
     @Override

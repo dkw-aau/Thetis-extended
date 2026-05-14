@@ -12,6 +12,7 @@ public interface Table<T>
     void addRow(Row<T> row);
     int rowCount();
     int columnCount();
+    String getId();
 
     default String toStr()
     {

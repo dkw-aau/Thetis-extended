@@ -28,6 +28,21 @@ public class TableParser
             Type type = new TypeToken<HashMap<String, List<List<String>>>>(){}.getType();
             Map<String, List<List<String>>> map = gson.fromJson(reader, type);
 
+            if (f.getName().matches(".*\\\\d.*"))
+            {
+                StringBuilder numberBuilder = new StringBuilder();
+
+                for (char c : f.getName().toCharArray())
+                {
+                    if (Character.isDigit(c))
+                    {
+                        numberBuilder.append(c);
+                    }
+                }
+
+                return new DynamicTable<>(numberBuilder.toString(), map.get("queries"));
+            }
+
             return new DynamicTable<>(map.get("queries"));
         }
 

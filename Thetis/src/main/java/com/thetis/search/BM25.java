@@ -7,20 +7,29 @@ import co.elastic.clients.json.JsonData;
 import co.elastic.clients.json.jackson.JacksonJsonpMapper;
 import co.elastic.clients.transport.ElasticsearchTransport;
 import co.elastic.clients.transport.rest_client.RestClientTransport;
+import com.google.common.reflect.TypeToken;
+import com.google.gson.Gson;
 import com.thetis.structures.Pair;
 import com.thetis.structures.table.Table;
 import org.apache.http.HttpHost;
 import org.elasticsearch.client.RestClient;
 
 import java.io.IOException;
+import java.io.Reader;
+import java.lang.reflect.Type;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class BM25 extends AbstractSearch
 {
     private long elapsedNs = -1;
     private final String indexName;
     private final boolean normalizeResults;
+    private final Map<Integer, String> queryMapping = new HashMap<>();
     private int k;
 
     public BM25(String indexName, boolean normalizeResults, int k)
@@ -29,6 +38,25 @@ public class BM25 extends AbstractSearch
         this.indexName = indexName;
         this.normalizeResults = normalizeResults;
         this.k = k;
+    }
+
+    public BM25(String indexName, boolean normalizeResults, int k, String queryMappingFile)
+    {
+        this(indexName, normalizeResults, k);
+        readQueryMapping(queryMappingFile);
+    }
+
+    private void readQueryMapping(String queryMappingFile)
+    {
+        try (Reader reader = Files.newBufferedReader(Path.of(queryMappingFile)))
+        {
+            Gson gson = new Gson();
+            Type type = new TypeToken<HashMap<Integer, String>>(){}.getType();
+            Map<Integer, String> mapping = gson.fromJson(reader, type);
+            this.queryMapping.putAll(mapping);
+        }
+
+        catch (IOException ignored) {}
     }
 
     public void setK(int k)
@@ -47,7 +75,7 @@ public class BM25 extends AbstractSearch
             List<Pair<String, Double>> results = new ArrayList<>();
             ElasticsearchTransport transport = new RestClientTransport(restClient, new JacksonJsonpMapper());
             ElasticsearchClient client = new ElasticsearchClient(transport);
-            String keywordQuery = convertQuery(query);
+            String keywordQuery = this.queryMapping.getOrDefault(Integer.parseInt(query.getId()), convertQuery(query));
             SearchResponse<JsonData> search = client.search(s -> s
                     .index(this.indexName)
                     .size(this.k)

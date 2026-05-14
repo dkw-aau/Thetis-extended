@@ -89,6 +89,7 @@ public class LuceneIndex implements Index<String, Result>, AutoCloseable
         {
             List<String> tokens = tokenize(keywordQuery);
             BooleanQuery.Builder queryBuilder = new BooleanQuery.Builder();
+            BooleanQuery.setMaxClauseCount(4096);
 
             for (String token : tokens)
             {

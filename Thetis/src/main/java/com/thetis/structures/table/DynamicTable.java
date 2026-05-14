@@ -10,6 +10,7 @@ import java.util.Vector;
  */
 public class DynamicTable<T> implements Table<T>
 {
+    private String id = null;
     private List<Row<T>> table;
     private List<String> labels;
 
@@ -32,6 +33,30 @@ public class DynamicTable<T> implements Table<T>
     public DynamicTable(List<List<T>> table)
     {
         this(table, new String[]{});
+    }
+
+    public DynamicTable(String id, String ... columnLabels)
+    {
+        this(columnLabels);
+        this.id = id;
+    }
+
+    public DynamicTable(String id, List<List<T>> table, String ... columnLabels)
+    {
+        this(table, columnLabels);
+        this.id = id;
+    }
+
+    public DynamicTable(String id, List<List<T>> table)
+    {
+        this(table);
+        this.id = id;
+    }
+
+    @Override
+    public String getId()
+    {
+        return this.id;
     }
 
     @Override
