@@ -1,6 +1,7 @@
 package com.thetis.search.multicriteria;
 
 import com.thetis.search.AbstractSearch;
+import com.thetis.search.AnalogousSearch;
 import com.thetis.search.Result;
 import com.thetis.structures.Pair;
 import com.thetis.structures.table.Table;
@@ -22,14 +23,24 @@ public class MultiSearch extends AbstractSearch
         this.engines = List.of(engines);
     }
 
-    public static CombinerPipeline createPipeline(RankingCombiner ... combiners)
+    public static CombinerPipeline createOrderedPipeline(RankingCombiner ... combiners)
     {
         return new OrderedCombiner(List.of(combiners));
     }
 
-    public static CombinerPipeline createPipeline(Function<List<Double>, Double> entryAggregator, RankingCombiner ... combiners)
+    public static CombinerPipeline createOrderedPipeline(Function<List<Double>, Double> entryAggregator, RankingCombiner ... combiners)
     {
         return new OrderedCombiner(List.of(combiners), entryAggregator);
+    }
+
+    public static CombinerPipeline createOverlapPipeline(Topsis topsis, int topK)
+    {
+        return new OverlapCombiner(topsis, topK);
+    }
+
+    public static CombinerPipeline createOverlapPipeline(AnalogousSearch analogousSearch, Table<String> query, int topK)
+    {
+        return new OverlapCombiner(analogousSearch, query, topK);
     }
 
     @Override

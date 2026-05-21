@@ -22,10 +22,7 @@ import com.thetis.connector.Neo4jEndpoint;
 import com.thetis.loader.IndexReader;
 import com.thetis.loader.Stats;
 import com.thetis.search.*;
-import com.thetis.search.multicriteria.CombinerPipeline;
-import com.thetis.search.multicriteria.MultiSearch;
-import com.thetis.search.multicriteria.Pareto;
-import com.thetis.search.multicriteria.Topsis;
+import com.thetis.search.multicriteria.*;
 import com.thetis.store.EmbeddingsIndex;
 import com.thetis.store.EntityLinking;
 import com.thetis.store.EntityTable;
@@ -622,8 +619,7 @@ public class SearchTables extends Command {
                                EntityTableLink tableLink, EmbeddingsIndex<Id> embeddingIdx, Prefilter prefilter, Path tableDir) throws IOException
     {
         AnalogousSearch semanticSearch = initAnalogousSearch(linker, table, tableLink, embeddingIdx, prefilter, tableDir);
-        //CombinerPipeline pipeline = MultiSearch.createPipeline(new Pareto(), new Topsis(List.of(0.25, 0.75)));
-        CombinerPipeline pipeline = MultiSearch.createPipeline(new Topsis(List.of(0.25, 0.75)));
+        CombinerPipeline pipeline = MultiSearch.createOverlapPipeline(new Topsis(List.of(0.5, 0.5)), this.topK);
         MultiSearch combinedSearch = new MultiSearch(pipeline, semanticSearch, bm25);
         Result results = combinedSearch.search(query);
         List<Pair<String, Double>> scores = new ArrayList<>(this.topK);
