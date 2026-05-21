@@ -54,14 +54,24 @@ public class MultiSearchTest
     }
 
     @Test
-    public void testSearch()
+    public void testOrderedCombinerSearch()
     {
-        CombinerPipeline pipeline = MultiSearch.createPipeline(new Pareto(), new Topsis(List.of(0.5, 0.5)));
+        CombinerPipeline pipeline = MultiSearch.createOrderedPipeline(new Pareto(), new Topsis(List.of(0.5, 0.5)));
         MultiSearch search = new MultiSearch(pipeline, this.keywordSearch, this.semanticSearch);
         Table<String> query = new SimpleTable<>(List.of(List.of("http://dbpedia.org/resource/Windows_Mobile", "http://dbpedia.org/resource/Cosworth")));
         Result result = search.search(query);
-        Pair<String, Double> best = result.getResults().next();
         assertTrue(result.getResults().hasNext());
         assertEquals(5, result.getSize());
+    }
+
+    @Test
+    public void testOverlapCombinerSearch()
+    {
+        CombinerPipeline pipeline = MultiSearch.createOverlapPipeline(new Topsis(List.of(0.5, 0.5)), 1);
+        MultiSearch search = new MultiSearch(pipeline, this.keywordSearch, this.semanticSearch);
+        Table<String> query = new SimpleTable<>(List.of(List.of("http://dbpedia.org/resource/Windows_Mobile", "http://dbpedia.org/resource/Cosworth")));
+        Result result = search.search(query);
+        assertTrue(result.getResults().hasNext());
+        assertEquals(1, result.getSize());
     }
 }
