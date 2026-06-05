@@ -170,6 +170,20 @@
       <artifactId>hnswlib-jna</artifactId>
       <version>1.4.2</version>
     </dependency>
+
+    <dependency>
+      <groupId>ml.dmlc</groupId>
+      <artifactId>xgboost4j_2.13</artifactId>
+      <version>3.2.0</version>
+      <scope>compile</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>com.opencsv</groupId>
+      <artifactId>opencsv</artifactId>
+      <version>5.12.0</version>
+      <scope>compile</scope>
+    </dependency>
   </dependencies>
 
   <build>

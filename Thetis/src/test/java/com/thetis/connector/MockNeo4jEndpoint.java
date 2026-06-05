@@ -4,9 +4,12 @@ import com.thetis.structures.Pair;
 import org.neo4j.driver.Record;
 
 import java.util.List;
+import java.util.Random;
 
 public class MockNeo4jEndpoint implements Neo4jSemanticDriver
 {
+    private final Random rand = new Random();
+
     @Override
     public String getPredicate(String predicateLabel)
     {
@@ -57,12 +60,20 @@ public class MockNeo4jEndpoint implements Neo4jSemanticDriver
     }
 
     @Override
-    public Long getNumNodes() {
+    public Long getNumNodes()
+    {
         return 10000L;
     }
 
     @Override
-    public Long getNumNeighbors(String node) {
+    public Long getNumNeighbors(String node)
+    {
         return 0L;
+    }
+
+    @Override
+    public long typeFrequency(String typeUri)
+    {
+        return this.rand.nextLong(1000);
     }
 }

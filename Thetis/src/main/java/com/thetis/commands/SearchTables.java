@@ -23,6 +23,10 @@ import com.thetis.loader.IndexReader;
 import com.thetis.loader.Stats;
 import com.thetis.search.*;
 import com.thetis.search.multicriteria.*;
+import com.thetis.search.multicriteria.ml.Feature;
+import com.thetis.search.multicriteria.ml.FeatureCollector;
+import com.thetis.search.multicriteria.ml.FrequencyFeature;
+import com.thetis.search.multicriteria.ml.MLModelAPI;
 import com.thetis.store.EmbeddingsIndex;
 import com.thetis.store.EntityLinking;
 import com.thetis.store.EntityTable;
@@ -41,6 +45,7 @@ import com.thetis.structures.table.Table;
 import com.thetis.utilities.Ppr;
 import com.thetis.utilities.Utils;
 
+import ml.dmlc.xgboost4j.java.XGBoostError;
 import org.neo4j.driver.exceptions.AuthenticationException;
 import org.neo4j.driver.exceptions.ServiceUnavailableException;
 
@@ -55,7 +60,7 @@ public class SearchTables extends Command {
     CommandLine.Model.CommandSpec spec; // injected by picocli
 
     private enum SearchMode {
-        EXACT("exact"), ANALOGOUS("analogous"), PPR("ppr"), KEYWORD("keyword"), COMBINED("combined");
+        EXACT("exact"), ANALOGOUS("analogous"), PPR("ppr"), KEYWORD("keyword"), COMBINED("combined"), LEARNING_TO_RANK("learning-to-rank");
 
         private final String mode;
         SearchMode(String mode){
@@ -232,6 +237,9 @@ public class SearchTables extends Command {
         configFile = value;
     }
 
+    @CommandLine.Option(names = {"-mp", "--model-path"}, description = "Path to XGBoost model")
+    private String modelPath = null;
+
     @CommandLine.Option(names = {"-t", "--threads"}, description = "Number of threads", required = true, defaultValue = "1")
     private int threads;
 
@@ -272,7 +280,7 @@ public class SearchTables extends Command {
             Neo4jEndpoint connector = new Neo4jEndpoint(this.configFile);
             connector.testConnection();
 
-            IndexReader indexReader = new IndexReader(this.indexDir, true, true, embeddingStore);
+            IndexReader indexReader = new IndexReader(this.indexDir, true, true);
             indexReader.performIO();
 
             long elapsedTime = System.nanoTime() - startTime;
@@ -287,6 +295,7 @@ public class SearchTables extends Command {
             LuceneSearch keywordSearch = new LuceneSearch(lucene, Objects.requireNonNull(this.tableDir.listFiles()).length);
             Prefilter prefilter = null;
             BM25 bm25;
+            MLModelAPI mlModel = null;
 
             if (this.queryMappingFile == null)
             {
@@ -305,6 +314,24 @@ public class SearchTables extends Command {
                     case LUCENE -> new Prefilter(linker, entityTable, entityTableLink, embeddingsIdx, keywordSearch);
                     default -> null;
                 };
+            }
+
+            if (this.searchMode == SearchMode.LEARNING_TO_RANK)
+            {
+                if (this.modelPath == null)
+                {
+                    throw new RuntimeException("Missing model path");
+                }
+
+                try
+                {
+                    mlModel = MLModelAPI.getGXBoostModel(this.modelPath);
+                }
+
+                catch (XGBoostError e)
+                {
+                    throw new RuntimeException(e);
+                }
             }
 
             for (Path queryPath : this.queryFiles)
@@ -353,6 +380,10 @@ public class SearchTables extends Command {
 
                     case COMBINED:
                         combinedSearch(queryTable, queryName, bm25, linker, entityTable, entityTableLink, embeddingsIdx, prefilter, this.tableDir.toPath());
+                        break;
+
+                    case LEARNING_TO_RANK:
+                        learningToRank(queryTable, queryName, mlModel, bm25, linker, entityTable, entityTableLink, embeddingsIdx, prefilter, this.tableDir.toPath(), connector);
                         break;
                 }
             }
@@ -619,7 +650,7 @@ public class SearchTables extends Command {
                                EntityTableLink tableLink, EmbeddingsIndex<Id> embeddingIdx, Prefilter prefilter, Path tableDir) throws IOException
     {
         AnalogousSearch semanticSearch = initAnalogousSearch(linker, table, tableLink, embeddingIdx, prefilter, tableDir);
-        CombinerPipeline pipeline = MultiSearch.createOverlapPipeline(new Topsis(List.of(0.5, 0.5)), this.topK);
+        CombinerPipeline pipeline = MultiSearch.createOverlapPipeline(semanticSearch, query, this.topK);
         MultiSearch combinedSearch = new MultiSearch(pipeline, semanticSearch, bm25);
         Result results = combinedSearch.search(query);
         List<Pair<String, Double>> scores = new ArrayList<>(this.topK);
@@ -634,6 +665,42 @@ public class SearchTables extends Command {
         scores = scores.subList(0, this.topK);
         saveFilenameScores(this.outputDir, tableLink.getDirectory(), queryName, scores, new HashMap<>(), Set.of(), semanticSearch.elapsedNanoSeconds(),
                 -1, -1, -1, -1, semanticSearch.getReduction());
+    }
+
+    public void learningToRank(Table<String> query, String queryName, MLModelAPI model, BM25 bm25, EntityLinking linker, EntityTable table,
+                               EntityTableLink tableLink, EmbeddingsIndex<Id> embeddingIdx, Prefilter prefilter, Path tableDir, Neo4jEndpoint neo4j) throws IOException
+    {
+        List<String> queryEntities = new ArrayList<>();
+        int rows = query.rowCount();
+
+        for (int row = 0; row < rows; row++)
+        {
+            Table.Row<String> queryRow = query.getRow(row);
+            int cells = queryRow.size();
+
+            for (int cell = 0; cell < cells; cell++)
+            {
+                queryEntities.add(queryRow.get(cell));
+            }
+        }
+
+        FrequencyFeature feature = FeatureCollector.frequencyFeatures(queryEntities, neo4j, linker, tableLink, -1);
+        MLModelAPI.EngineLabel engine = MLModelAPI.EngineLabel.valueOf(model.predict(feature));
+
+        if (engine == MLModelAPI.EngineLabel.BM25)
+        {
+            bm25Search(bm25, query, queryName, tableLink.getDirectory());
+        }
+
+        else if (engine == MLModelAPI.EngineLabel.THETIS)
+        {
+            analogousSearch(query, queryName, linker, table, tableLink, embeddingIdx, prefilter, tableDir);
+        }
+
+        else
+        {
+            throw new RuntimeException("Predicted search engine '" + engine + "'");
+        }
     }
 
     /**

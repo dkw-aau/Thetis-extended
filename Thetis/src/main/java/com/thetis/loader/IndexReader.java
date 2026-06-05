@@ -36,10 +36,9 @@ public class IndexReader implements IndexIO
     private EmbeddingsIndex<Id> embeddingsIdx;
     private HNSW hnsw;
     private LuceneIndex luceneIndex;
-    private DBDriver<List<Double>, String> embedddingsDB;
     private static final int INDEX_COUNT = 6;
 
-    public IndexReader(File indexDir, boolean isMultithreaded, boolean logProgress, DBDriver<List<Double>, String> embedddingsDB)
+    public IndexReader(File indexDir, boolean isMultithreaded, boolean logProgress)
     {
         if (!indexDir.isDirectory())
         {
@@ -54,7 +53,6 @@ public class IndexReader implements IndexIO
         this.indexDir = indexDir;
         this.multithreaded = isMultithreaded;
         this.logProgress = logProgress;
-        this.embedddingsDB = embedddingsDB;
     }
 
     /**

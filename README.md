@@ -176,3 +176,29 @@ docker exec elasticsearch_bm25 python3 indexer.py --index_name wikitables --inpu
 
 You can now search using the previous Thetis search command, but substituting the `--search-mode` flag with `keyword`, and add the options `--bm25-host` using the retrieved IP address of the Elasticsearch instance and `--bm25-index-name` using the BM25 index `wikitables`.
 We recommend not using prefiltering with the `-pf` flag when performing this type of search.
+
+#### Learning-To-Rank
+Thetis++ also allows employing learning-to-rank based on frequencies of query entities and their types.
+Thetis++ trains an XGBoost model predicting whether to use Thetis or BM25 for a given query.
+This requires that indexes are already loaded.
+
+We train XGBoost as a supervised model, and therefore, we must first construct a labeled ground truth set.
+This is a file, where each line corresponds to a query and its label.
+The format of a line in such file is as follows:
+
+```
+<QUERY_ID>,<LABEL>,<QUERY ENTITY 1>;<QUERY ENTITY 2>;<QUERY ENTITY n>
+```
+
+The label is either 0 or 1, where 0 means that Thetis performs best and 1 means that BM25 performs best.
+Below is an example of a line:
+
+```
+wikipage_37750,0,http://dbpedia.org/resource/Ai_FM;http://dbpedia.org/resource/Radio_Televisyen_Malaysia;http://dbpedia.org/resource/Chinese_language;http://dbpedia.org/resource/Talk_radio
+```
+
+Given the training file, train the XGBoost model:
+
+```bash
+java -Xms25g -jar target/Thetis.0.1.jar train --data-file <TRAINING FILE> --index-dir <INDEX DIRECTORY> --test-split-size <SIZE OF TRAINING DATA, E.G., 0.2>
+```

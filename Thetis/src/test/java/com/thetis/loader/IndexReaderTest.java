@@ -45,7 +45,7 @@ public class IndexReaderTest
             IndexWriter writer = new IndexWriter(paths, outDir, new MockLinker(), endpoint, 1,
                     embeddingsDB, "http://www.wikipedia.org/", "http://dbpedia.org/");
             writer.performIO();
-            reader = new IndexReader(outDir, false, true, embeddingsDB);
+            reader = new IndexReader(outDir, false, true);
             reader.performIO();
         }
     }

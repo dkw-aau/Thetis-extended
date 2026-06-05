@@ -335,4 +335,20 @@ public class Neo4jEndpoint implements AutoCloseable, Neo4jSemanticDriver {
             return numNeighbors;
         } 
     }
+
+    @Override
+    public long typeFrequency(String typeUri)
+    {
+        Map<String, Object> params = new HashMap<>();
+        params.put("type", typeUri);
+
+        try (Session session = this.driver.session())
+        {
+            long count = session.readTransaction(tx -> {
+                Result result = tx.run("MATCH (a:Resource)-[p:rdf__type]->(b:Resource) WHERE b.uri IN [$type] RETURN COUNT(a) AS c");
+                return result.single().get("c").asLong();
+            });
+            return count;
+        }
+    }
 }

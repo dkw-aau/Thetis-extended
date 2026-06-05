@@ -66,7 +66,6 @@ public class OverlapCombiner implements CombinerPipeline
             }
         }
 
-        // If
         CombinedRanking newResults = overlappingRanking;
         int remaining = this.topK - overlappingRanking.size(),
                 engine1Remaining = (int) Math.ceil((double) remaining / 2),

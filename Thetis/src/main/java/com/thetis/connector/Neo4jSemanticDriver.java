@@ -14,4 +14,5 @@ public interface Neo4jSemanticDriver extends Neo4jDriver
     List<Record> entityLabels();
     List<String> searchPredicates(String entity);
     List<Pair<String, String>> searchLinkMentions(List<String> links);
+    long typeFrequency(String typeUri);
 }
