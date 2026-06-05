@@ -26,8 +26,13 @@ public final class FeatureCollector
         for (String type : types)
         {
             long frequency = neo4j.typeFrequency(type);
-            min = Math.min(min, frequency);
-            max = Math.max(max, frequency);
+
+            if (frequency > 0)
+            {
+                min = Math.min(min, frequency);
+                max = Math.max(max, frequency);
+            }
+
         }
 
         Id id = linker.kgUriLookup(entity);

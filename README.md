@@ -197,6 +197,12 @@ Below is an example of a line:
 wikipage_37750,0,http://dbpedia.org/resource/Ai_FM;http://dbpedia.org/resource/Radio_Televisyen_Malaysia;http://dbpedia.org/resource/Chinese_language;http://dbpedia.org/resource/Talk_radio
 ```
 
+Before training, we must install libgomp within the Docker container:
+
+```bash
+microdnf install libgomp
+```
+
 Given the training file, train the XGBoost model:
 
 ```bash

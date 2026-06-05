@@ -115,4 +115,18 @@ public class FrequencyFeature implements Feature<List<FrequencyFeature.EntityFre
 
         return flattenedArray;
     }
+
+    @Override
+    public String toString()
+    {
+        String[] libsvm = transformToLibsvm();
+        StringBuilder builder = new StringBuilder();
+
+        for (String element : libsvm)
+        {
+            builder.append(element).append(" ");
+        }
+
+        return builder.toString();
+    }
 }

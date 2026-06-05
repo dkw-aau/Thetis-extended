@@ -34,7 +34,7 @@ class TrainPipeline implements Runnable
         this.testFraction = testSplitFraction;
         this.modelPath = modelPath;
         this.testPath = modelPath + "/model.test";
-        this.trainPath = modelPath + "/mode.train";
+        this.trainPath = modelPath + "/model.train";
         this.featureIterator = featureIterator;
 
         this.config.put("eta", "0.1");
@@ -97,7 +97,7 @@ class TrainPipeline implements Runnable
             throw new RuntimeException(e);
         }
 
-        Logger.logNewLine(Logger.Level.INFO, "Done constructing training and test sets in " + (System.nanoTime() - startTime) + "ms");
+        Logger.logNewLine(Logger.Level.INFO, "Done constructing training and test sets in " + (System.currentTimeMillis() - startTime) + "ms");
         Logger.logNewLine(Logger.Level.INFO, "Training model");
 
         try
