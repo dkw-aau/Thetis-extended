@@ -32,12 +32,11 @@ public final class FeatureCollector
                 min = Math.min(min, frequency);
                 max = Math.max(max, frequency);
             }
-
         }
 
         Id id = linker.kgUriLookup(entity);
-        features.add(min);
-        features.add(max);
+        features.add(min < Integer.MAX_VALUE ? min : 0);
+        features.add(Math.max(max, 0));
 
         if (id != null)
         {

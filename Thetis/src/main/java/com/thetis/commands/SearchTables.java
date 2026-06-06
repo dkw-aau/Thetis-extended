@@ -318,14 +318,9 @@ public class SearchTables extends Command {
 
             if (this.searchMode == SearchMode.LEARNING_TO_RANK)
             {
-                if (this.modelPath == null)
-                {
-                    throw new RuntimeException("Missing model path");
-                }
-
                 try
                 {
-                    mlModel = MLModelAPI.getGXBoostModel(this.modelPath);
+                    mlModel = MLModelAPI.getGXBoostModel(this.indexDir.getAbsolutePath());
                 }
 
                 catch (XGBoostError e)
@@ -686,6 +681,7 @@ public class SearchTables extends Command {
 
         FrequencyFeature feature = FeatureCollector.frequencyFeatures(queryEntities, neo4j, linker, tableLink, -1);
         MLModelAPI.EngineLabel engine = MLModelAPI.EngineLabel.valueOf(model.predict(feature));
+        Logger.logNewLine(Logger.Level.INFO, "Predicted to use " + engine.toString());
 
         if (engine == MLModelAPI.EngineLabel.BM25)
         {

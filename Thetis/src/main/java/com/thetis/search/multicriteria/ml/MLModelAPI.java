@@ -8,13 +8,15 @@ public class MLModelAPI implements MLModel<Iterator<? extends Feature<?>>>
 {
     public enum EngineLabel
     {
-        THETIS(0), BM25(1);
+        THETIS(0, "Thetis"), BM25(1, "BM25");
 
         private final int id;
+        private String label;
 
-        EngineLabel(int id)
+        EngineLabel(int id, String label)
         {
             this.id = id;
+            this.label = label;
         }
 
         public int getId()
@@ -29,6 +31,12 @@ public class MLModelAPI implements MLModel<Iterator<? extends Feature<?>>>
                 case 1 -> BM25;
                 default -> null;
             };
+        }
+
+        @Override
+        public String toString()
+        {
+            return this.label;
         }
     }
 
