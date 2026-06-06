@@ -33,8 +33,8 @@ class TrainPipeline implements Runnable
 
         this.testFraction = testSplitFraction;
         this.modelPath = modelPath;
-        this.testPath = modelPath + "/model.test";
-        this.trainPath = modelPath + "/model.train";
+        this.testPath = modelPath + "/test.svm.text";
+        this.trainPath = modelPath + "/train.svm.txt";
         this.featureIterator = featureIterator;
 
         this.config.put("eta", "0.1");

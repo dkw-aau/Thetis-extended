@@ -3,6 +3,7 @@ package com.thetis;
 import com.thetis.commands.IndexTables;
 import com.thetis.commands.LoadEmbedding;
 import com.thetis.commands.SearchTables;
+import com.thetis.commands.Train;
 
 import org.apache.jena.rdfxml.xmlinput.impl.Taint;
 import picocli.CommandLine;
