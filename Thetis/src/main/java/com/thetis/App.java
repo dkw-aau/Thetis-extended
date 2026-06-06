@@ -5,7 +5,6 @@ import com.thetis.commands.LoadEmbedding;
 import com.thetis.commands.SearchTables;
 import com.thetis.commands.Train;
 
-import org.apache.jena.rdfxml.xmlinput.impl.Taint;
 import picocli.CommandLine;
 
 import java.io.File;
@@ -29,7 +28,7 @@ import org.apache.commons.cli.*;
         IndexTables.class,
         SearchTables.class,
         LoadEmbedding.class,
-        Taint.class
+        Train.class
 })
 public class App implements Runnable {
 

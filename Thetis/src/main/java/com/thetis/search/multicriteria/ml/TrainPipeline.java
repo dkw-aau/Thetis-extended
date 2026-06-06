@@ -102,7 +102,8 @@ class TrainPipeline implements Runnable
 
         try
         {
-            DMatrix trainMatrix = new DMatrix(this.trainPath), testMatrix = new DMatrix(this.testPath);
+            DMatrix trainMatrix = new DMatrix(this.trainPath + "?format=libsvm"),
+                    testMatrix = new DMatrix(this.testPath + "?format=libsvm");
             Map<String, DMatrix> watches = new HashMap<>();
             watches.put("train", trainMatrix);
             watches.put("test", testMatrix);
@@ -122,7 +123,8 @@ class TrainPipeline implements Runnable
     {
         try
         {
-            DMatrix trainMatrix = new DMatrix(this.trainPath), testMatrix = new DMatrix(this.testPath);
+            DMatrix trainMatrix = new DMatrix(this.trainPath + "?format=libsvm"),
+                    testMatrix = new DMatrix(this.testPath + "?format=libsvm");
             float[][] trainPredictions = this.booster.predict(trainMatrix);
             float[][] testPredictions = this.booster.predict(testMatrix);
             int trueTrainPredictions = evalPredictions(trainPredictions, this.trainGT),

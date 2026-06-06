@@ -128,10 +128,11 @@ public class Train extends Command
                 }
             };
             MLModelAPI model = MLModelAPI.getXGBoostModel(this.testSplitFraction, this.indexDir.getAbsolutePath());
+            long start = System.currentTimeMillis();
             Logger.logNewLine(Logger.Level.INFO, "Training XGBoost model");
             model.train(frequencyFeatureIterator);
 
-            Logger.logNewLine(Logger.Level.INFO, "Training complete");
+            Logger.logNewLine(Logger.Level.INFO, "Training complete in " + (System.currentTimeMillis() - start) + "ms");
         }
 
         catch (IOException e)
