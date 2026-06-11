@@ -125,11 +125,11 @@ public class Train extends Command
                 {
                     String[] split = this.line.split(",");
                     MLModelAPI.EngineLabel label = MLModelAPI.EngineLabel.valueOf(Integer.parseInt(split[1]));
-                    List<String> entities = List.of(split[2].split(";"));
+                    List<String> entities = new ArrayList<>(List.of(split[2].split(";")));
 
                     if (entities.size() < maxEntityCount)
                     {
-                        entities.addAll(Collections.nCopies(maxEntityCount - entities.size(), "null"));
+                        entities.addAll(new ArrayList<>(Collections.nCopies(maxEntityCount - entities.size(), "null")));
                     }
 
                     return FeatureCollector.frequencyFeatures(entities, neo4jEndpoint, linker, entityTableLink, label.getId());
