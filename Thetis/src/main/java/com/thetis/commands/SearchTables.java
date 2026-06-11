@@ -320,7 +320,7 @@ public class SearchTables extends Command {
             {
                 try
                 {
-                    mlModel = MLModelAPI.getGXBoostModel(this.indexDir.getAbsolutePath());
+                    mlModel = MLModelAPI.getGXBoostModel(this.indexDir.getAbsolutePath() + "/model.bin");
                 }
 
                 catch (XGBoostError e)

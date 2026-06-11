@@ -14,6 +14,8 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 
@@ -97,6 +99,7 @@ public class Train extends Command
             IndexReader indexReader = new IndexReader(this.indexDir, true, true);
             indexReader.performIO();
 
+            int maxEntityCount = maxEntities();
             EntityLinking linker = indexReader.getLinker();
             EntityTableLink entityTableLink = indexReader.getEntityTableLink();
             Iterator<FrequencyFeature> frequencyFeatureIterator = new Iterator<>() {
@@ -124,6 +127,11 @@ public class Train extends Command
                     MLModelAPI.EngineLabel label = MLModelAPI.EngineLabel.valueOf(Integer.parseInt(split[1]));
                     List<String> entities = List.of(split[2].split(";"));
 
+                    if (entities.size() < maxEntityCount)
+                    {
+                        entities.addAll(Collections.nCopies(maxEntityCount - entities.size(), "null"));
+                    }
+
                     return FeatureCollector.frequencyFeatures(entities, neo4jEndpoint, linker, entityTableLink, label.getId());
                 }
             };
@@ -142,5 +150,26 @@ public class Train extends Command
         }
 
         return 0;
+    }
+
+    private int maxEntities()
+    {
+        try (BufferedReader reader = new BufferedReader(new FileReader(this.dataFile)))
+        {
+            String line;
+            int max = 0;
+
+            while ((line = reader.readLine()) != null)
+            {
+                max = Math.max(max, line.split(",").length);
+            }
+
+            return max;
+        }
+
+        catch (IOException e)
+        {
+            return -1;
+        }
     }
 }

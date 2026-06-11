@@ -1,6 +1,5 @@
 package com.thetis.search.multicriteria.ml;
 
-import com.thetis.connector.Neo4jEndpoint;
 import com.thetis.connector.Neo4jSemanticDriver;
 import com.thetis.store.EntityLinking;
 import com.thetis.store.EntityTableLink;
@@ -19,7 +18,13 @@ public final class FeatureCollector
     public static FrequencyFeature.EntityFrequencyFeature entityFrequencyFeature(String entity, Neo4jSemanticDriver neo4j, EntityLinking linker,
                                                                                  EntityTableLink entityTableLink, int label)
     {
-        List<Long> features = new ArrayList<>(3);
+        Id id = linker.kgUriLookup(entity);
+
+        if (id == null)
+        {
+            return new FrequencyFeature.EntityFrequencyFeature(label, List.of(0L, 0L, 0L));
+        }
+
         List<String> types = neo4j.searchTypes(entity);
         long min = Integer.MAX_VALUE, max = Integer.MIN_VALUE;
 
@@ -34,19 +39,8 @@ public final class FeatureCollector
             }
         }
 
-        Id id = linker.kgUriLookup(entity);
-        features.add(min < Integer.MAX_VALUE ? min : 0);
-        features.add(Math.max(max, 0));
-
-        if (id != null)
-        {
-            long entityFrequency = entityTableLink.find(id).size();
-            features.add(entityFrequency);
-
-            return new FrequencyFeature.EntityFrequencyFeature(label, features);
-        }
-
-        return null;
+        long entityFrequency = entityTableLink.find(id).size();
+        return new FrequencyFeature.EntityFrequencyFeature(label, List.of(entityFrequency, min < Integer.MAX_VALUE ? min : 0, Math.max(max, 0)));
     }
 
     /**
