@@ -129,7 +129,7 @@ public class Train extends Command
 
                     if (entities.size() < maxEntityCount)
                     {
-                        entities.addAll(new ArrayList<>(Collections.nCopies(maxEntityCount - entities.size(), "null")));
+                        entities.addAll(new ArrayList<>(Collections.nCopies(maxEntityCount - entities.size(), "http://dbpedia.org/resource/null")));
                     }
 
                     return FeatureCollector.frequencyFeatures(entities, neo4jEndpoint, linker, entityTableLink, label.getId());
