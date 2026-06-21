@@ -345,7 +345,7 @@ public class Neo4jEndpoint implements AutoCloseable, Neo4jSemanticDriver {
         try (Session session = this.driver.session())
         {
             long count = session.readTransaction(tx -> {
-                Result result = tx.run("MATCH (a:Resource)-[p:rdf__type]->(b:Resource) WHERE b.uri IN [$type] RETURN COUNT(a) AS c");
+                Result result = tx.run("MATCH (a:Resource)-[p:rdf__type]->(b:Resource) WHERE b.uri IN [$type] RETURN COUNT(a) AS c", params);
                 return result.single().get("c").asLong();
             });
             return count;
