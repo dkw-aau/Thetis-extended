@@ -1,9 +1,13 @@
 package com.thetis.search.multicriteria.ml;
 
+import com.thetis.connector.DBDriverBatch;
 import com.thetis.connector.Neo4jSemanticDriver;
+import com.thetis.store.EmbeddingsIndex;
 import com.thetis.store.EntityLinking;
 import com.thetis.store.EntityTableLink;
 import com.thetis.structures.Id;
+import com.thetis.structures.table.Table;
+import com.thetis.utilities.Utils;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -64,5 +68,47 @@ public final class FeatureCollector
         }
 
         return new FrequencyFeature(label, entityFeatures);
+    }
+
+    public static EmbeddingsFeature queryEmbeddingFeature(Table<String> query, int label, EntityLinking linker, EmbeddingsIndex<Id> embeddingsIndex)
+    {
+        int rows = query.rowCount();
+        int columns = query.columnCount();
+        List<List<Double>> sumVectors = new ArrayList<>(rows);
+
+        for (int row = 0; row < rows; row++)
+        {
+            List<Double> sumVector = null;
+
+            for (int column = 0; column < columns; column++)
+            {
+                String entity = query.getRow(row).get(column);
+                Id id = linker.kgUriLookup(entity);
+
+                if (id != null)
+                {
+                    List<Double> embedding = embeddingsIndex.find(id);
+                    int dimension = embedding.size();
+
+
+                    if (sumVector == null)
+                    {
+                        sumVector = embedding;
+                    }
+
+                    else
+                    {
+                        for (int dim = 0; dim < dimension; dim++)
+                        {
+                            sumVector.set(dim, sumVector.get(dim) + embedding.get(dim));
+                        }
+                    }
+                }
+            }
+
+            sumVectors.add(sumVector);
+        }
+
+        return new EmbeddingsFeature(Utils.averageVector(sumVectors), label);
     }
 }

@@ -1,12 +1,17 @@
 package com.thetis.commands;
 
+import com.thetis.commands.parser.TableParser;
 import com.thetis.connector.Neo4jEndpoint;
 import com.thetis.loader.IndexReader;
+import com.thetis.search.multicriteria.ml.EmbeddingsFeature;
 import com.thetis.search.multicriteria.ml.FeatureCollector;
 import com.thetis.search.multicriteria.ml.FrequencyFeature;
 import com.thetis.search.multicriteria.ml.MLModelAPI;
+import com.thetis.store.EmbeddingsIndex;
 import com.thetis.store.EntityLinking;
 import com.thetis.store.EntityTableLink;
+import com.thetis.structures.Id;
+import com.thetis.structures.table.Table;
 import com.thetis.system.Logger;
 import picocli.CommandLine;
 
@@ -14,10 +19,11 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.List;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @picocli.CommandLine.Command(name = "train", description = "Train ML model on query set to predict optimal search engine")
 public class Train extends Command
@@ -26,18 +32,39 @@ public class Train extends Command
     @CommandLine.Spec
     CommandLine.Model.CommandSpec spec; // injected by picocli
 
-    private File dataFile = null;
-    @CommandLine.Option(names = {"-df", "--data-file"}, description = "File containing labeled training data", required = true)
-    public void setDataDir(File value)
+    private File queriesLocation;
+    private List<Path> queryFiles;
+    @CommandLine.Option(names = { "-q", "--queries" }, paramLabel = "QUERY", description = "Path to directory of query json files", required = true)
+    public void setQueryFile(File value)
     {
         if (!value.exists())
         {
             throw new CommandLine.ParameterException(spec.commandLine(),
-                    String.format("InvaRoyaltylid value '%s' for option '--data-file': " +
-                            "the file does not exists.", value));
+                    String.format("Invalid value '%s' for option '--queries': " + "the directory does not exists.", value));
         }
 
-        this.dataFile = value;
+        this.queriesLocation = value;
+
+        if (value.isFile())
+        {
+            this.queryFiles = List.of(value.toPath());
+        }
+
+        else
+        {
+            try
+            {
+                Stream<Path> queryStream = Files.find(value.toPath(), Integer.MAX_VALUE,
+                        (filePath, fileAttr) -> fileAttr.isRegularFile() && filePath.getFileName().toString().endsWith(".json"));
+                this.queryFiles = queryStream.collect(Collectors.toList());
+            }
+
+            catch (IOException e)
+            {
+                Logger.logNewLine(Logger.Level.ERROR, "Exception when finding query files: " + e.getMessage());
+                System.exit(1);
+            }
+        }
     }
 
     private File indexDir = null;
@@ -64,6 +91,27 @@ public class Train extends Command
         }
 
         this.indexDir = value;
+    }
+
+    private File labelFile = null;
+    @CommandLine.Option(names = {"-lf", "--label-file"}, paramLabel = "LABEL", description = "label file of binary values", required = true)
+    public void setLabelFile(File value)
+    {
+        if (!value.exists())
+        {
+            throw new CommandLine.ParameterException(spec.commandLine(),
+                    String.format("Invalid value '%s' for option '--label-file': " +
+                            "the file does not exists.", value));
+        }
+
+        if (value.isDirectory())
+        {
+            throw new CommandLine.ParameterException(spec.commandLine(),
+                    String.format("Invalid value '%s' for option '--label-file': " +
+                            "the path should point to a file not to a directory.", value));
+        }
+
+        this.labelFile = value;
     }
 
     private File configFile = null;
@@ -93,52 +141,43 @@ public class Train extends Command
     @Override
     public Integer call()
     {
-        try (BufferedReader reader = new BufferedReader(new FileReader(this.dataFile)))
+        try
         {
-            Neo4jEndpoint neo4jEndpoint = new Neo4jEndpoint(this.configFile);
             IndexReader indexReader = new IndexReader(this.indexDir, true, true);
             indexReader.performIO();
 
-            int maxEntityCount = maxEntities();
             EntityLinking linker = indexReader.getLinker();
-            EntityTableLink entityTableLink = indexReader.getEntityTableLink();
-            Iterator<FrequencyFeature> frequencyFeatureIterator = new Iterator<>() {
-                private String line;
+            EmbeddingsIndex<Id> embeddingsIdx = indexReader.getEmbeddingsIndex();
+            Iterator<Path> queryPathIterator = this.queryFiles.iterator();
+            Map<String, MLModelAPI.EngineLabel> labelMap = readLabels();
+            Iterator<EmbeddingsFeature> embeddingFeatureIterator = new Iterator<>() {
+                private EmbeddingsFeature embeddingsFeature;
 
                 @Override
                 public boolean hasNext()
                 {
-                    try
-                    {
-                        this.line = reader.readLine();
-                        return this.line != null;
-                    }
-
-                    catch (IOException ignored)
-                    {
-                        return false;
-                    }
+                    return queryPathIterator.hasNext();
                 }
 
                 @Override
-                public FrequencyFeature next()
+                public EmbeddingsFeature next()
                 {
-                    String[] split = this.line.split(",");
-                    MLModelAPI.EngineLabel label = MLModelAPI.EngineLabel.valueOf(Integer.parseInt(split[1]));
-                    List<String> entities = new ArrayList<>(List.of(split[2].split(";")));
-
-                    if (entities.size() < maxEntityCount)
+                    if (!hasNext())
                     {
-                        entities.addAll(new ArrayList<>(Collections.nCopies(maxEntityCount - entities.size(), "http://dbpedia.org/resource/null")));
+                        throw new IllegalStateException(("Query iterator is at the end"));
                     }
 
-                    return FeatureCollector.frequencyFeatures(entities, neo4jEndpoint, linker, entityTableLink, label.getId());
+                    File queryFile = queryPathIterator.next().toFile();
+                    Table<String> queryTable = TableParser.toTable(queryFile);
+                    MLModelAPI.EngineLabel label = labelMap.get(queryFile.getName().replace(".json", ""));
+
+                    return FeatureCollector.queryEmbeddingFeature(queryTable, label.getId(), linker, embeddingsIdx);
                 }
             };
             MLModelAPI model = MLModelAPI.getXGBoostModel(this.testSplitFraction, this.indexDir.getAbsolutePath());
             long start = System.currentTimeMillis();
             Logger.logNewLine(Logger.Level.INFO, "Training XGBoost model");
-            model.train(frequencyFeatureIterator);
+            model.train(embeddingFeatureIterator);
 
             Logger.logNewLine(Logger.Level.INFO, "Training complete in " + (System.currentTimeMillis() - start) + "ms");
         }
@@ -152,24 +191,25 @@ public class Train extends Command
         return 0;
     }
 
-    private int maxEntities()
+    private Map<String, MLModelAPI.EngineLabel> readLabels()
     {
-        try (BufferedReader reader = new BufferedReader(new FileReader(this.dataFile)))
+        try (BufferedReader reader = new BufferedReader(new FileReader(this.labelFile)))
         {
             String line;
-            int max = 0;
+            Map<String, MLModelAPI.EngineLabel> labels = new HashMap<>();
 
             while ((line = reader.readLine()) != null)
             {
-                max = Math.max(max, line.split(",").length);
+                String[] tokens = line.split(",");
+                labels.put(tokens[0], MLModelAPI.EngineLabel.valueOf(Integer.parseInt(tokens[1])));
             }
 
-            return max;
+            return labels;
         }
 
         catch (IOException e)
         {
-            return -1;
+            return null;
         }
     }
 }

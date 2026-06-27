@@ -23,10 +23,7 @@ import com.thetis.loader.IndexReader;
 import com.thetis.loader.Stats;
 import com.thetis.search.*;
 import com.thetis.search.multicriteria.*;
-import com.thetis.search.multicriteria.ml.Feature;
-import com.thetis.search.multicriteria.ml.FeatureCollector;
-import com.thetis.search.multicriteria.ml.FrequencyFeature;
-import com.thetis.search.multicriteria.ml.MLModelAPI;
+import com.thetis.search.multicriteria.ml.*;
 import com.thetis.store.EmbeddingsIndex;
 import com.thetis.store.EntityLinking;
 import com.thetis.store.EntityTable;
@@ -679,7 +676,7 @@ public class SearchTables extends Command {
             }
         }
 
-        FrequencyFeature feature = FeatureCollector.frequencyFeatures(queryEntities, neo4j, linker, tableLink, -1);
+        EmbeddingsFeature feature = FeatureCollector.queryEmbeddingFeature(query, -1, linker, embeddingIdx);
         MLModelAPI.EngineLabel engine = MLModelAPI.EngineLabel.valueOf(model.predict(feature));
         Logger.logNewLine(Logger.Level.INFO, "Predicted to use " + engine.toString());
 
