@@ -109,6 +109,11 @@ public final class FeatureCollector
             sumVectors.add(sumVector);
         }
 
+        if (sumVectors.isEmpty())
+        {
+            return null;
+        }
+
         return new EmbeddingsFeature(Utils.averageVector(sumVectors), label);
     }
 }

@@ -77,6 +77,11 @@ class TrainPipeline implements Runnable
             {
                 Feature<?> feature = this.featureIterator.next();
 
+                if (feature == null)
+                {
+                    continue;
+                }
+
                 if (this.randomGenerator.nextDouble() < this.testFraction)
                 {
                     testWriter.writeNext(feature.transformToLibsvm());

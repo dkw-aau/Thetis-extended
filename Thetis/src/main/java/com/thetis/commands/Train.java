@@ -1,15 +1,12 @@
 package com.thetis.commands;
 
 import com.thetis.commands.parser.TableParser;
-import com.thetis.connector.Neo4jEndpoint;
 import com.thetis.loader.IndexReader;
 import com.thetis.search.multicriteria.ml.EmbeddingsFeature;
 import com.thetis.search.multicriteria.ml.FeatureCollector;
-import com.thetis.search.multicriteria.ml.FrequencyFeature;
 import com.thetis.search.multicriteria.ml.MLModelAPI;
 import com.thetis.store.EmbeddingsIndex;
 import com.thetis.store.EntityLinking;
-import com.thetis.store.EntityTableLink;
 import com.thetis.structures.Id;
 import com.thetis.structures.table.Table;
 import com.thetis.system.Logger;
@@ -200,7 +197,7 @@ public class Train extends Command
 
             while ((line = reader.readLine()) != null)
             {
-                String[] tokens = line.split(",");
+                String[] tokens = line.split(":");
                 labels.put(tokens[0], MLModelAPI.EngineLabel.valueOf(Integer.parseInt(tokens[1])));
             }
 
