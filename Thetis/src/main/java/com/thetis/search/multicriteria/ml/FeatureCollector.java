@@ -90,7 +90,6 @@ public final class FeatureCollector
                     List<Double> embedding = embeddingsIndex.find(id);
                     int dimension = embedding.size();
 
-
                     if (sumVector == null)
                     {
                         sumVector = embedding;
@@ -106,7 +105,10 @@ public final class FeatureCollector
                 }
             }
 
-            sumVectors.add(sumVector);
+            if (sumVector != null)
+            {
+                sumVectors.add(sumVector);
+            }
         }
 
         if (sumVectors.isEmpty())
