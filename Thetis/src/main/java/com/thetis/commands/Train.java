@@ -165,11 +165,6 @@ public class Train extends Command
                 @Override
                 public EmbeddingsFeature next()
                 {
-                    if (!hasNext())
-                    {
-                        throw new IllegalStateException(("Query iterator is at the end"));
-                    }
-
                     Table<String> queryTable = TableParser.toTable(this.nextQueryFile);
                     MLModelAPI.EngineLabel label = labelMap.get(this.nextQueryFile.getName().replace(".json", ""));
 
