@@ -148,11 +148,17 @@ public class Train extends Command
             Iterator<Path> queryPathIterator = this.queryFiles.iterator();
             Map<String, MLModelAPI.EngineLabel> labelMap = readLabels();
             Iterator<EmbeddingsFeature> embeddingFeatureIterator = new Iterator<>() {
-                private EmbeddingsFeature embeddingsFeature;
+                private EmbeddingsFeature embeddingsFeature = null;
+                File nextQueryFile = null;
 
                 @Override
                 public boolean hasNext()
                 {
+                    while (queryPathIterator.hasNext() &&
+                            !labelMap.containsKey((this.nextQueryFile = queryPathIterator.next().toFile())
+                                    .getName().replace(".json", "")));
+
+
                     return queryPathIterator.hasNext();
                 }
 
@@ -164,9 +170,8 @@ public class Train extends Command
                         throw new IllegalStateException(("Query iterator is at the end"));
                     }
 
-                    File queryFile = queryPathIterator.next().toFile();
-                    Table<String> queryTable = TableParser.toTable(queryFile);
-                    MLModelAPI.EngineLabel label = labelMap.get(queryFile.getName().replace(".json", ""));
+                    Table<String> queryTable = TableParser.toTable(this.nextQueryFile);
+                    MLModelAPI.EngineLabel label = labelMap.get(this.nextQueryFile.getName().replace(".json", ""));
 
                     return FeatureCollector.queryEmbeddingFeature(queryTable, label.getId(), linker, embeddingsIdx);
                 }
